@@ -49,7 +49,7 @@ export default async function VisitPage() {
             as="p"
             textKey="visit.openingHoursText"
             fallback={t("openingHoursText")}
-            className="text-sm text-ink/80 leading-relaxed mb-6"
+            className="text-sm text-ink/80 leading-relaxed mb-6 whitespace-pre-line"
           />
           <a
             href={GOOGLE_MAPS_URL}
