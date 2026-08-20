@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+:root {
+  --color-wine: #5c1a2b;
+  --color-wine-dark: #3a0f1c;
+  --color-gold: #b98b3e;
+  --color-cream: #f6f0e6;
+  --color-cream-dark: #ece2d0;
+  --color-ink: #2a2320;
+  /* Trial color for the closure notice banner — swap this one value once
+     Roberto has seen it and given a preference. */
+  --color-terracotta: #a8583a;
+}
+
+@theme inline {
+  --color-wine: var(--color-wine);
+  --color-wine-dark: var(--color-wine-dark);
+  --color-gold: var(--color-gold);
+  --color-cream: var(--color-cream);
+  --color-cream-dark: var(--color-cream-dark);
+  --color-ink: var(--color-ink);
+  --color-terracotta: var(--color-terracotta);
+  --font-serif: "Cormorant Garamond", Didot, "Iowan Old Style", Georgia, serif;
+  --font-sans: Inter, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
