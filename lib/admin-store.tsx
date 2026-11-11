@@ -83,8 +83,12 @@ interface AdminContextValue extends AdminState {
   /** Autosave state for Page Content and Design, shown in the admin. */
   saveStatus: SaveStatus;
   saveError: string | null;
-  /** Save anything still waiting for the typing pause, right now. */
-  flushSaves: () => void;
+  /**
+   * Save anything still waiting for the typing pause right now, and wait
+   * for every save in progress. Resolves true if all saved, false if any
+   * failed (the error box is then showing).
+   */
+  flushSaves: () => Promise<boolean>;
   /** Re-apply and re-save the changes that failed (and were rolled back). */
   retrySave: () => void;
   /** Forget the failed changes (they are already rolled back). */
@@ -122,6 +126,7 @@ type DbResult = PromiseLike<{ data: unknown[] | null; error: { message: string }
  * error, just 0 rows — so 0 rows is treated as a failure too.
  */
 async function trySave(write: () => DbResult): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
   try {
     const { data, error } = await write();
     if (error) return error.message;
@@ -309,6 +314,7 @@ export function AdminStoreProvider({
   const inFlight = useRef(0);
   const chains = useRef<Record<string, Promise<unknown>>>({});
   const failed = useRef<FailedChanges>(noFailures());
+  const running = useRef(new Set<Promise<void>>());
 
   const [busy, setBusy] = useState(false);
   const [savedOnce, setSavedOnce] = useState(false);
@@ -376,6 +382,13 @@ export function AdminStoreProvider({
         inFlight.current--;
         refresh();
       });
+    }
+
+    // Keeps every save (including its rollback handling) until it's done,
+    // so flush() can wait for all of them.
+    function track(p: Promise<void>) {
+      running.current.add(p);
+      void p.finally(() => running.current.delete(p));
     }
 
     function succeeded() {
@@ -453,7 +466,7 @@ export function AdminStoreProvider({
       delete queuedText.current[key];
       clearTimeout(textTimers.current[key]);
       delete textTimers.current[key];
-      void saveText(key, value);
+      track(saveText(key, value));
     }
 
     function flushSettings() {
@@ -461,7 +474,7 @@ export function AdminStoreProvider({
       settingsTimer.current = null;
       const patch = queuedSettings.current;
       queuedSettings.current = {};
-      if (Object.keys(patch).length > 0) void saveSettings(patch);
+      if (Object.keys(patch).length > 0) track(saveSettings(patch));
       else refresh();
     }
 
@@ -482,7 +495,7 @@ export function AdminStoreProvider({
       bump(`image:${key}`);
       delete failed.current.images[key];
       clearErrorIfResolved();
-      void saveImage(key, mediaId);
+      track(saveImage(key, mediaId));
     }
 
     function editSettings(patch: Partial<SiteSettings>, immediate = false) {
@@ -499,9 +512,14 @@ export function AdminStoreProvider({
       refresh();
     }
 
-    function flush() {
+    /** Sends everything queued, waits for all saves; true if nothing failed. */
+    async function flush(): Promise<boolean> {
       Object.keys(queuedText.current).forEach(flushText);
       if (settingsTimer.current) flushSettings();
+      while (running.current.size > 0) {
+        await Promise.all([...running.current]);
+      }
+      return !hasFailures(failed.current);
     }
 
     function retry() {
@@ -528,21 +546,22 @@ export function AdminStoreProvider({
   useEffect(() => {
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       const unsaved = autosave.hasUnsaved();
-      autosave.flush();
+      void autosave.flush();
       if (unsaved) {
         e.preventDefault();
         e.returnValue = ""; // older browsers need this to show the warning
       }
     };
     const onHidden = () => {
-      if (document.visibilityState === "hidden") autosave.flush();
+      if (document.visibilityState === "hidden") void autosave.flush();
     };
+    const onPageHide = () => void autosave.flush();
     window.addEventListener("beforeunload", onBeforeUnload);
-    window.addEventListener("pagehide", autosave.flush);
+    window.addEventListener("pagehide", onPageHide);
     document.addEventListener("visibilitychange", onHidden);
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
-      window.removeEventListener("pagehide", autosave.flush);
+      window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onHidden);
     };
   }, [autosave]);

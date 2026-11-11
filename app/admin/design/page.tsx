@@ -50,7 +50,7 @@ export default function AdminDesignPage() {
 
   // onBlur bubbles up from every field: leaving a field saves it at once.
   return (
-    <div className="max-w-3xl" onBlur={flushSaves}>
+    <div className="max-w-3xl" onBlur={() => void flushSaves()}>
       <h1 className="font-serif text-3xl text-black mb-1">Design & Branding</h1>
       <p className="text-ink/60 text-sm mb-8">
         The design profile for this site — name, logo, colors, fonts and

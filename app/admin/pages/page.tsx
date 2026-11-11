@@ -144,7 +144,7 @@ export default function AdminPagesEditor() {
 
   // onBlur bubbles up from every field: leaving a field saves it at once.
   return (
-    <div onBlur={flushSaves}>
+    <div onBlur={() => void flushSaves()}>
       <h1 className="font-serif text-3xl text-black mb-1">Page Content</h1>
       <p className="text-ink/60 text-sm mb-6">
         Edit the text and pictures that appear on Home, The Winery and About

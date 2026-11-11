@@ -23,6 +23,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const { siteSettings, saveStatus, saveError, flushSaves, retrySave, dismissSaveError } =
     useAdminStore();
   const [email, setEmail] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -33,11 +34,18 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   // Moving to another admin page saves anything still waiting.
   useEffect(() => {
-    flushSaves();
+    void flushSaves();
   }, [pathname, flushSaves]);
 
+  // Wait for every save first. If one fails, stay signed in: the error
+  // box is showing, and signing out would lose the change.
   async function signOut() {
-    flushSaves();
+    setSigningOut(true);
+    const allSaved = await flushSaves();
+    if (!allSaved) {
+      setSigningOut(false);
+      return;
+    }
     await createClient().auth.signOut();
     router.replace("/admin/login");
     router.refresh();
@@ -95,8 +103,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               <div className="text-sm text-ink/60">
                 Signed in as <span className="font-medium text-ink">{email ?? "…"}</span>
               </div>
-              <button onClick={signOut} className="text-sm text-black hover:underline">
-                Sign out
+              <button
+                onClick={signOut}
+                disabled={signingOut}
+                className="text-sm text-black hover:underline disabled:opacity-50"
+              >
+                {signingOut ? "Saving…" : "Sign out"}
               </button>
             </>
           ) : (
