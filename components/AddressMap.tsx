@@ -1,6 +1,8 @@
 "use client";
 
+import { useLocale } from "next-intl";
 import { useAdminStore } from "@/lib/admin-store";
+import { pageTextKey } from "@/data/page-fields";
 import PageText from "@/components/PageText";
 
 /**
@@ -25,6 +27,7 @@ export default function AddressMap({
   openingHoursTextFallback: string;
 }) {
   const { siteSettings } = useAdminStore();
+  const locale = useLocale();
   const { addressLine1, addressLine2, addressLine3, phone } = siteSettings;
 
   const fullAddress = [addressLine1, addressLine2, addressLine3]
@@ -53,13 +56,13 @@ export default function AddressMap({
 
       <PageText
         as="h3"
-        textKey="visit.openingHoursTitle"
+        textKey={pageTextKey(locale, "visit", "openingHoursTitle")}
         fallback={openingHoursTitleFallback}
         className="font-serif text-lg text-wine mb-2"
       />
       <PageText
         as="p"
-        textKey="visit.openingHoursText"
+        textKey={pageTextKey(locale, "visit", "openingHoursText")}
         fallback={openingHoursTextFallback}
         className="text-sm text-ink/80 leading-relaxed mb-6 whitespace-pre-line"
       />

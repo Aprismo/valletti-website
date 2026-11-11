@@ -5,9 +5,9 @@ import { useAdminStore } from "@/lib/admin-store";
 
 /**
  * Renders a piece of site text that Roberto can change from
- * /admin/pages (Page Content), e.g. Opening Hours. Falls back to the
- * translated default if nothing has been set yet. English only for
- * now — same limitation as PageImage.
+ * /admin/pages (Page Content), e.g. Opening Hours. Pass a per-language
+ * key (see pageTextKey in data/page-fields.ts); falls back to the
+ * translated default if nothing has been saved yet.
  */
 export default function PageText({
   textKey,

@@ -26,13 +26,10 @@ import {
  * this app uses) automatically hoists them into <head> wherever they're
  * rendered in the tree.
  *
- * PROTOTYPE NOTE: the design profile currently lives in the client-side
- * admin store (localStorage), so this renders after hydration — the
- * very first paint uses the defaults baked into globals.css (Valletti's
- * own colors/fonts), then switches to the saved profile a moment later.
- * Once `site_settings` is read from Supabase server-side (see
- * schema.sql), this can render directly in the server-rendered <head>
- * instead, removing that flash entirely.
+ * The design profile is loaded server-side (lib/data.ts) and passed into
+ * the store, so this is already correct in the server-rendered HTML.
+ * (In local mode without Supabase, a profile saved in localStorage is
+ * applied a moment after load.)
  */
 export default function SiteTheme() {
   const { siteSettings } = useAdminStore();

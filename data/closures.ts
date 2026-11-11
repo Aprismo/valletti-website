@@ -1,7 +1,8 @@
 import { ClosurePeriod } from "@/types";
 
 /**
- * PLACEHOLDER DATA — set from /admin/closures in production.
+ * PLACEHOLDER DATA — only used when Supabase isn't configured (local
+ * dev); in production closures come from Supabase via /admin/closures.
  * Toggle `active` to see the closure banner appear on the Visit page.
  */
 export const closures: ClosurePeriod[] = [
@@ -14,14 +15,16 @@ export const closures: ClosurePeriod[] = [
   },
 ];
 
-export function getActiveClosure(): ClosurePeriod | undefined {
+export function getActiveClosure(
+  list: ClosurePeriod[] = closures
+): ClosurePeriod | undefined {
   const today = new Date().toISOString().slice(0, 10);
-  const current = closures.find(
+  const current = list.find(
     (c) => c.active && c.startDate <= today && today <= c.endDate
   );
   if (current) return current;
   // Also surface an upcoming closure so visitors see it in advance.
-  return closures
+  return list
     .filter((c) => c.active && c.startDate > today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
 }

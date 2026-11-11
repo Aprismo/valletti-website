@@ -5,23 +5,37 @@ site in 5 languages (EN/NL/DE/FR/IT) plus an admin panel for Roberto.
 Built with Next.js (App Router), Tailwind CSS, next-intl, and designed
 to run on Vercel with Supabase as the backend.
 
-## What's real vs. what's a mockup
+## How it works
 
 - **Public pages** (Home, The Winery, About, Wines, Visit, Where to Buy)
-  are fully built and localized. Wine/retailer/closure data currently
-  comes from placeholder files in `/data` — swap these for Supabase
-  queries once a project is connected (see below).
-- **The Visit form** actually submits to `/app/api/contact/route.ts`,
-  which validates and logs the request. Wire in an email provider
-  (Resend, Postmark…) there to notify Roberto for real.
-- **The `/admin` panel** is fully clickable (add/edit/remove wines,
-  upload/delete pictures, manage retailers and closure periods) but
-  runs on in-memory state (`/lib/admin-store.tsx`) — changes reset on
-  reload. This is intentional: it lets you and Roberto react to the
-  actual UX before wiring up real auth and a database.
+  are fully built and localized. Content (wines, retailers, closure
+  periods, pictures, page content, design profile) is loaded on the
+  server in `lib/data.ts`: from **Supabase** when it's configured,
+  otherwise from the placeholder files in `/data` (local development).
+- **The Visit form** posts to `app/api/contact/route.ts`, which emails
+  the request via **Resend** to `CONTACT_NOTIFY_EMAIL` (reply-to is the
+  visitor). Without Resend configured it only logs locally, and returns
+  an error in production.
+- **The `/admin` panel** is protected by **Supabase Auth** (email +
+  password): `proxy.ts` sends anyone not signed in to `/admin/login`.
+  Only users listed in the `admins` table get in — signed in alone isn't
+  enough. Changes are saved to Supabase and pictures uploaded to the
+  `media` storage bucket; row-level security (`supabase/schema.sql`,
+  `is_admin()`) means only admins can write, even through the public
+  API. Without Supabase, the admin runs in local
+  mode (changes stay in your browser, uploads go to `/public/uploads`)
+  — and is locked in production builds, so a deploy with missing env
+  vars never exposes an open admin.
 - **`/admin/design`** (Design & Branding) lets Roberto set the site's
   name, logo, colors, fonts, and address — the Visit page's map and
   contact info are built directly from that address, in every language.
+- **Page Content** (`/admin/pages`): pictures and the texts for Home /
+  The Winery / About / Visit (Opening Hours) are saved to Supabase.
+  Texts are stored per language (`page_content` key
+  `<locale>:<page>.<field>`, fields listed in `data/page-fields.ts`);
+  anything not saved falls back to the translations in `/messages`.
+- **Contact form spam protection:** a hidden honeypot field and a limit
+  of 5 requests per IP per 10 minutes (in memory, per server instance).
 
 ## Running it locally
 
@@ -31,27 +45,36 @@ npm run dev
 ```
 
 Visit `http://localhost:3000` (redirects to `/en`) and
-`http://localhost:3000/admin`.
+`http://localhost:3000/admin`. With no `.env.local`, everything runs on
+the `/data` placeholders. To work against a real Supabase project,
+copy `.env.example` to `.env.local` and fill it in.
+
+## Environment variables
+
+Set these on Vercel (Production). See `.env.example` for details.
+
+| Name | Required | What |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Supabase anon / publishable key (never the service_role key) |
+| `RESEND_API_KEY` | yes | Resend API key |
+| `CONTACT_NOTIFY_EMAIL` | yes | Inbox for visit requests / questions (comma-separated for several) |
+| `CONTACT_FROM_EMAIL` | yes | Sender on a domain verified in Resend |
 
 ## Going to production
 
-1. **Create a Supabase project.** Run `/supabase/schema.sql` in the SQL
-   editor — it creates the wines, translations, retailers, closures,
-   media, inquiries, and site_settings (design profile) tables, with
-   row-level security so the public can only read (and submit
-   inquiries), and only a signed-in admin can write.
-2. **Create a `media` storage bucket** in Supabase (public read).
-3. **Copy `.env.example` to `.env.local`** and fill in your Supabase
-   URL and anon key.
-4. **Swap the `/data` placeholder functions** for real Supabase queries
-   (the shapes already match the schema — `getWineBySlug`,
-   `getFeaturedWines`, etc.).
-5. **Wire up Supabase Auth** on `/admin` (currently unprotected) so only
-   Roberto can sign in — a single email/password user is enough to
-   start.
-6. **Add an email provider** in `/app/api/contact/route.ts` so visit
-   requests actually reach Roberto's inbox.
-7. **Deploy to Vercel**, add the env vars there, connect the domain.
+Step-by-step checklist: **[GO-LIVE.md](GO-LIVE.md)**. In short:
+
+1. Create a Supabase project, run `supabase/schema.sql` then
+   `supabase/seed.sql` in the SQL editor (creates tables, RLS, the
+   `media` bucket, and loads the current wines/pictures/design).
+2. Create Roberto's user, add him to the `admins` table, and turn off
+   public sign-ups.
+3. Verify Roberto's domain in Resend and create an API key.
+4. Deploy to Vercel with the env vars above and connect the domain.
+
+All accounts (Supabase, Vercel, Resend, domain) are Roberto's own and
+kept fully separate from any other project.
 
 See the full specification document for more detail on scope, content
 model, and what's intentionally out of scope for v1.

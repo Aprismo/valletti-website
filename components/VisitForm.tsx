@@ -40,6 +40,13 @@ export default function VisitForm() {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 max-w-xl">
+      {/* Spam trap: hidden from people, but bots tend to fill it in. */}
+      <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+        <label>
+          Website
+          <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+        </label>
+      </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <label className="flex flex-col gap-1 text-sm">
           {t("formName")}

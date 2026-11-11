@@ -101,17 +101,13 @@ export default function WineForm({
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const selectedUrl = media.find((m) => m.id === form.imageMediaId)?.url ?? "";
     const payload = { ...form, imageUrl: selectedUrl };
 
-    if (wineId) {
-      updateWine(wineId, payload);
-    } else {
-      addWine(payload);
-    }
-    router.push("/admin/wines");
+    const ok = wineId ? await updateWine(wineId, payload) : await addWine(payload);
+    if (ok) router.push("/admin/wines");
   }
 
   const selectedImage = media.find((m) => m.id === form.imageMediaId);

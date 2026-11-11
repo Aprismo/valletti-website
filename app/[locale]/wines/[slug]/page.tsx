@@ -2,9 +2,10 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { getWineBySlug, wines } from "@/data/wines";
+import { getWineBySlug, getWines } from "@/lib/data";
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const wines = await getWines();
   return wines.map((w) => ({ slug: w.slug }));
 }
 
@@ -14,7 +15,7 @@ export default async function WineDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const wine = getWineBySlug(slug);
+  const wine = await getWineBySlug(slug);
   if (!wine) notFound();
 
   const t = await getTranslations("wines");

@@ -1,10 +1,11 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
-import { wines } from "@/data/wines";
+import { getWines } from "@/lib/data";
 
 export default async function WinesPage() {
   const t = await getTranslations("wines");
+  const wines = await getWines();
 
   return (
     <div>

@@ -1,11 +1,9 @@
 import { createBrowserClient } from "@supabase/ssr";
 
 /**
- * Browser-side Supabase client, for use inside the /admin panel (client
- * components) once a real Supabase project is connected. Requires
- * NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to be set —
- * see .env.example. Not called anywhere in the public prototype pages,
- * which use the placeholder data in /data instead.
+ * Browser-side Supabase client, used by the admin panel (lib/admin-store.tsx
+ * and the login page) to sign in, save changes and upload pictures.
+ * Only call this when isSupabaseConfigured is true (lib/supabase/config.ts).
  */
 export function createClient() {
   return createBrowserClient(

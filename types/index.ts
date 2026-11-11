@@ -126,3 +126,33 @@ export interface SiteSettings {
   addressLine3: string;
   phone: string;
 }
+
+// ── Admin / database shapes ─────────────────────────────────────────
+// A picture in the media library. `storagePath` is set for files in the
+// Supabase `media` bucket (so they can be deleted there too); pictures
+// that ship with the site under /public have no storage path.
+export interface MediaItem {
+  id: string;
+  url: string;
+  fileName: string;
+  uploadedAt: string;
+  storagePath?: string;
+}
+
+// A wine as the admin panel sees it: the public Wine plus which media
+// library picture it uses.
+export interface AdminWine extends Wine {
+  imageMediaId: string;
+}
+
+// Everything the site needs to render, loaded once per request on the
+// server (from Supabase, or from /data when Supabase isn't configured).
+export interface SiteData {
+  wines: AdminWine[];
+  media: MediaItem[];
+  retailers: Retailer[];
+  closures: ClosurePeriod[];
+  pageImages: Record<string, string>; // section key -> media id
+  pageText: Record<string, string>; // text key -> value (English only for now)
+  siteSettings: SiteSettings;
+}

@@ -1,9 +1,10 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { retailers } from "@/data/retailers";
+import { getRetailers } from "@/lib/data";
 
 export default async function WhereToBuyPage() {
   const t = await getTranslations("whereToBuy");
+  const retailers = await getRetailers();
 
   const byCountry = retailers.reduce<Record<string, typeof retailers>>(
     (acc, r) => {

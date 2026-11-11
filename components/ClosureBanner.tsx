@@ -1,8 +1,9 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { getActiveClosure, formatDateRange } from "@/data/closures";
+import { getClosures } from "@/lib/data";
 
 export default async function ClosureBanner() {
-  const closure = getActiveClosure();
+  const closure = getActiveClosure(await getClosures());
   if (!closure) return null;
 
   const locale = await getLocale();
