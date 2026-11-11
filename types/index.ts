@@ -86,3 +86,43 @@ export interface PageSection {
   body: string;
   order: number;
 }
+
+// ── Design profile ──────────────────────────────────────────────────
+// Everything needed to control the site's look from one place: name/
+// logo, a small palette, two fonts (heading + body), and the physical
+// address the Visit page's map and contact info are built from. See
+// /admin/design, /lib/fonts.ts and /data/site-settings.ts.
+export interface SiteSettings {
+  // Identity
+  name: string; // e.g. "Valletti" — shown in the header, footer, admin sidebar
+  legalName: string; // e.g. "Azienda Agricola Valletti" — used in the footer copyright line
+  tagline: string;
+  logoUrl: string; // path/URL to the logo image (any aspect ratio)
+
+  // Colors — plain hex strings, edited via <input type="color"> in admin.
+  // Generic role names on purpose (not "wine"/"gold") so the same fields
+  // make sense for any winery's palette. These map onto the site's
+  // existing CSS custom properties in globals.css (see SiteTheme.tsx).
+  colorPrimary: string; // headers, hero backgrounds, primary text accents
+  colorPrimaryDark: string; // header/footer background, darkest shade of primary
+  colorAccent: string; // links, small accents, section numbers
+  colorBackground: string; // page background
+  colorBackgroundAlt: string; // alternating section background
+  colorText: string; // body text
+  colorHighlight: string; // closure banner / notice highlight color
+
+  // Fonts — ids referencing the curated list in /lib/fonts.ts, not raw
+  // font-family strings, so every option is guaranteed to actually be
+  // loadable (see googleFontsHref() in that file).
+  headingFont: string;
+  bodyFont: string;
+
+  // Address — one physical location. Kept separate from the translated
+  // page copy in /messages because the Visit page map and the "tel:" /
+  // "Open in Google Maps" links are built directly from this, in every
+  // language, with no lookup or API key required (see AddressMap.tsx).
+  addressLine1: string;
+  addressLine2: string;
+  addressLine3: string;
+  phone: string;
+}

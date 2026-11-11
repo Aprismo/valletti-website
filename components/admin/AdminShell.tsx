@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
+import { useAdminStore } from "@/lib/admin-store";
 
 const links = [
   { href: "/admin", label: "Dashboard" },
+  { href: "/admin/design", label: "Design & Branding" },
   { href: "/admin/wines", label: "Wines" },
   { href: "/admin/media", label: "Media Library" },
   { href: "/admin/pages", label: "Page Content" },
@@ -15,12 +17,13 @@ const links = [
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { siteSettings } = useAdminStore();
 
   return (
     <div className="min-h-screen flex bg-[#f4f2ee] text-ink">
       <aside className="w-60 shrink-0 bg-neutral-900 text-white flex flex-col">
         <div className="px-6 py-5 font-serif text-2xl border-b border-white/10">
-          Valletti
+          {siteSettings.name}
           <div className="text-xs uppercase tracking-wide text-white/50 font-sans mt-1">
             Admin
           </div>

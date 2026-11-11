@@ -19,6 +19,9 @@ to run on Vercel with Supabase as the backend.
   runs on in-memory state (`/lib/admin-store.tsx`) — changes reset on
   reload. This is intentional: it lets you and Roberto react to the
   actual UX before wiring up real auth and a database.
+- **`/admin/design`** (Design & Branding) lets Roberto set the site's
+  name, logo, colors, fonts, and address — the Visit page's map and
+  contact info are built directly from that address, in every language.
 
 ## Running it locally
 
@@ -34,9 +37,9 @@ Visit `http://localhost:3000` (redirects to `/en`) and
 
 1. **Create a Supabase project.** Run `/supabase/schema.sql` in the SQL
    editor — it creates the wines, translations, retailers, closures,
-   media, and inquiries tables, with row-level security so the public
-   can only read (and submit inquiries), and only a signed-in admin can
-   write.
+   media, inquiries, and site_settings (design profile) tables, with
+   row-level security so the public can only read (and submit
+   inquiries), and only a signed-in admin can write.
 2. **Create a `media` storage bucket** in Supabase (public read).
 3. **Copy `.env.example` to `.env.local`** and fill in your Supabase
    URL and anon key.

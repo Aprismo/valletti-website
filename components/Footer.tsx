@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import NextLink from "next/link";
 import Image from "next/image";
+import { BrandName, BrandLegalName } from "./BrandMark";
 
 export default async function Footer() {
   const t = await getTranslations("footer");
@@ -12,7 +13,7 @@ export default async function Footer() {
     <footer className="mt-auto bg-wine-dark text-cream/80 text-sm">
       <div className="mx-auto max-w-6xl px-6 py-10 grid gap-8 sm:grid-cols-3">
         <div>
-          <div className="font-serif text-xl text-cream mb-2">Valletti</div>
+          <BrandName className="font-serif text-xl text-cream mb-2 block" />
           <p>{t("tagline")}</p>
         </div>
         <div className="flex flex-col gap-1">
@@ -40,7 +41,7 @@ export default async function Footer() {
       </div>
       <div className="border-t border-cream/10 px-6 py-4 text-xs text-center flex flex-col items-center gap-1">
         <span>
-          © {year} Azienda Agricola Valletti. {t("rights")}
+          © {year} <BrandLegalName />. {t("rights")}
         </span>
         <span className="text-cream/50 flex items-center gap-1.5">
           Made by

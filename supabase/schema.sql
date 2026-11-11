@@ -108,6 +108,39 @@ create table inquiries (
   created_at timestamptz default now()
 );
 
+-- ── Design profile (site_settings) ──────────────────────────────────
+-- Singleton table: exactly one row, enforced with a check constraint on
+-- a fixed id. This is what makes the codebase reusable for a different
+-- winery — name, logo, palette, fonts and address all live here instead
+-- of being hardcoded, so launching a new producer's site from this same
+-- template is "clone the repo, create a fresh Supabase project, run this
+-- file, fill in one row" rather than a code change. See
+-- lib/admin-store.tsx (client-side prototype of this same shape) and
+-- app/admin/design/page.tsx (the admin screen that edits it).
+create table site_settings (
+  id int primary key default 1 check (id = 1),
+  name text not null default 'Valletti',
+  legal_name text not null default 'Azienda Agricola Valletti',
+  tagline text default '',
+  logo_url text,                -- points to a file in the `media` storage bucket
+  color_primary text not null default '#5c1a2b',
+  color_primary_dark text not null default '#3a0f1c',
+  color_accent text not null default '#b98b3e',
+  color_background text not null default '#f6f0e6',
+  color_background_alt text not null default '#ece2d0',
+  color_text text not null default '#2a2320',
+  color_highlight text not null default '#a8583a',
+  heading_font text not null default 'cormorant', -- id from lib/fonts.ts HEADING_FONTS
+  body_font text not null default 'inter',        -- id from lib/fonts.ts BODY_FONTS
+  address_line1 text default '',
+  address_line2 text default '',
+  address_line3 text default '',
+  phone text default '',
+  updated_at timestamptz default now()
+);
+
+insert into site_settings (id) values (1);
+
 -- ── Admin users ──────────────────────────────────────────────────────
 -- Handled by Supabase Auth (auth.users). No extra table needed for a
 -- single admin (Roberto); add a `profiles` table with a `role` column
@@ -127,6 +160,7 @@ alter table closure_periods enable row level security;
 alter table closure_period_translations enable row level security;
 alter table media_items enable row level security;
 alter table inquiries enable row level security;
+alter table site_settings enable row level security;
 
 create policy "public read wines" on wines for select using (true);
 create policy "public read wine_translations" on wine_translations for select using (true);
@@ -147,6 +181,9 @@ create policy "admin manage media_items" on media_items for all using (auth.role
 
 create policy "public submit inquiries" on inquiries for insert with check (true);
 create policy "admin read inquiries" on inquiries for select using (auth.role() = 'authenticated');
+
+create policy "public read site_settings" on site_settings for select using (true);
+create policy "admin write site_settings" on site_settings for update using (auth.role() = 'authenticated');
 
 -- ── Storage bucket for the picture library ──────────────────────────
 -- Create manually in Supabase Studio → Storage, or via:

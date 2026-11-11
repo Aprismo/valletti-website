@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import Image from "next/image";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { BrandLogo } from "./BrandMark";
 
 export default async function Header() {
   const t = await getTranslations("nav");
@@ -19,14 +19,7 @@ export default async function Header() {
     <header className="bg-wine-dark text-cream sticky top-0 z-50 shadow-md">
       <div className="mx-auto max-w-6xl px-6 py-3 flex items-center justify-between gap-6">
         <Link href="/" className="flex items-center gap-3 shrink-0">
-          <Image
-            src="/brand/logo.jpeg"
-            alt="Valletti — Azienda Agricola"
-            width={220}
-            height={94}
-            className="h-16 w-auto bg-cream rounded-sm px-3 py-1.5"
-            priority
-          />
+          <BrandLogo />
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm uppercase tracking-wide">
           {links.map((l) => (

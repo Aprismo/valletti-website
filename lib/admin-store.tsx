@@ -33,10 +33,11 @@ import {
   useState,
   ReactNode,
 } from "react";
-import { Wine, Retailer, ClosurePeriod } from "@/types";
+import { Wine, Retailer, ClosurePeriod, SiteSettings } from "@/types";
 import { wines as seedWines } from "@/data/wines";
 import { retailers as seedRetailers } from "@/data/retailers";
 import { closures as seedClosures } from "@/data/closures";
+import { DEFAULT_SITE_SETTINGS } from "@/data/site-settings";
 import en from "@/messages/en.json";
 
 export interface MediaItem {
@@ -57,6 +58,7 @@ interface AdminState {
   closures: ClosurePeriod[];
   pageImages: Record<string, string>; // section key -> media id
   pageText: Record<string, string>; // text key -> current value (English only for now)
+  siteSettings: SiteSettings; // design profile: name, logo, colors, fonts, address
 }
 
 interface AdminContextValue extends AdminState {
@@ -74,6 +76,8 @@ interface AdminContextValue extends AdminState {
   setPageImage: (sectionKey: string, mediaId: string) => void;
   mediaUrl: (mediaId: string | undefined) => string | undefined;
   setPageText: (textKey: string, value: string) => void;
+  updateSiteSettings: (patch: Partial<SiteSettings>) => void;
+  setLogo: (file: File) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextValue | null>(null);
@@ -205,6 +209,7 @@ function nextId() {
 const MEDIA_STORAGE_KEY = "valletti-admin-media-v1";
 const PAGE_IMAGES_STORAGE_KEY = "valletti-admin-page-images-v1";
 const PAGE_TEXT_STORAGE_KEY = "valletti-admin-page-text-v1";
+const SITE_SETTINGS_STORAGE_KEY = "valletti-admin-site-settings-v1";
 
 function loadStoredMedia(): MediaItem[] | null {
   if (typeof window === "undefined") return null;
@@ -241,6 +246,20 @@ function loadStoredPageText(): Record<string, string> | null {
   try {
     const raw = window.localStorage.getItem(PAGE_TEXT_STORAGE_KEY);
     return raw ? (JSON.parse(raw) as Record<string, string>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function loadStoredSiteSettings(): SiteSettings | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(SITE_SETTINGS_STORAGE_KEY);
+    if (!raw) return null;
+    // Merge over the defaults so a field added to SiteSettings later
+    // (e.g. a new font option) doesn't leave older saved profiles with a
+    // missing value.
+    return { ...DEFAULT_SITE_SETTINGS, ...(JSON.parse(raw) as Partial<SiteSettings>) };
   } catch {
     return null;
   }
@@ -315,6 +334,7 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
   const [closures, setClosures] = useState<ClosurePeriod[]>(seedClosures);
   const [pageImages, setPageImages] = useState<Record<string, string>>(seedPageImages);
   const [pageText, setPageTextState] = useState<Record<string, string>>(seedPageText);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
 
   // Hydrate from localStorage after mount (kept out of the initial
   // useState so server and first client render match, avoiding a
@@ -350,6 +370,8 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
     if (storedPageImages) setPageImages(storedPageImages);
     const storedPageText = loadStoredPageText();
     if (storedPageText) setPageTextState((prev) => ({ ...prev, ...storedPageText }));
+    const storedSiteSettings = loadStoredSiteSettings();
+    if (storedSiteSettings) setSiteSettings(storedSiteSettings);
     setHasHydrated(true);
   }, []);
 
@@ -381,6 +403,15 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
     }
   }, [pageText, hasHydrated]);
 
+  useEffect(() => {
+    if (!hasHydrated) return;
+    try {
+      window.localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(siteSettings));
+    } catch {
+      // See note above.
+    }
+  }, [siteSettings, hasHydrated]);
+
   const value = useMemo<AdminContextValue>(
     () => ({
       wines,
@@ -389,10 +420,20 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       closures,
       pageImages,
       pageText,
+      siteSettings,
       setPageImage: (sectionKey, mediaId) =>
         setPageImages((prev) => ({ ...prev, [sectionKey]: mediaId })),
       setPageText: (textKey, val) =>
         setPageTextState((prev) => ({ ...prev, [textKey]: val })),
+      updateSiteSettings: (patch) =>
+        setSiteSettings((prev) => ({ ...prev, ...patch })),
+      setLogo: async (file) => {
+        // Reuses the same upload pipeline as picture uploads elsewhere
+        // (real file under /public/uploads locally; Supabase Storage in
+        // production) rather than a separate one-off for the logo.
+        const url = await uploadFile(file, 800, 0.92);
+        setSiteSettings((prev) => ({ ...prev, logoUrl: url }));
+      },
       mediaUrl: (mediaId) => media.find((m) => m.id === mediaId)?.url,
       addWine: (wine) => setWines((prev) => [...prev, { ...wine, id: nextId() }]),
       updateWine: (id, patch) =>
@@ -432,7 +473,7 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       wineCountUsingMedia: (mediaId) =>
         wines.filter((w) => w.imageMediaId === mediaId).length,
     }),
-    [wines, media, retailers, closures, pageImages, pageText]
+    [wines, media, retailers, closures, pageImages, pageText, siteSettings]
   );
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
