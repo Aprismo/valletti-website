@@ -1,23 +1,21 @@
 "use client";
 
 /**
- * In-memory admin store for the PROTOTYPE only.
+ * Shared site/admin state.
  *
- * This lets Roberto's admin screens be fully clickable (add/edit/delete
- * wines, upload/delete pictures, edit retailers and closures) without a
- * real backend wired up yet.
+ * The root layout loads all content on the server (lib/data.ts) and hands
+ * it to this provider as `initialData`, so public components (PageImage,
+ * PageText, BrandMark, SiteTheme...) render the saved content straight
+ * away, and the admin screens start from the same data.
  *
- * Uploaded pictures and picture choices (media + pageImages) are mirrored
- * into the browser's localStorage, so they survive a page reload or
- * opening the site in a new tab on the same computer — a stand-in for a
- * real database until Supabase is wired up. Wines/retailers/closures are
- * NOT persisted (they reset on reload), since those already have a full
- * add/edit UI that's easy to redo and keeping the demo simple matters
- * more there.
- *
- * In production, every function here (addWine, deleteMedia, etc.) is
- * replaced with a Supabase call — see /supabase/schema.sql for the exact
- * tables this maps to, and /lib/supabase for client setup.
+ * Two modes:
+ *  - Supabase configured (production): every admin change is written to
+ *    Supabase first, and only shown once it has saved. Pictures are
+ *    uploaded to the `media` storage bucket. Row-level security in
+ *    supabase/schema.sql makes sure only a signed-in admin can write.
+ *  - No Supabase (local dev): the original prototype behaviour — changes
+ *    live in memory, pictures/page content/design are mirrored into
+ *    localStorage, and uploads are saved under /public/uploads.
  *
  * Key design point requested by Valletti: pictures live in their own
  * media library, independent of wines. Adding/removing a wine never
@@ -30,26 +28,25 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   ReactNode,
 } from "react";
-import { Wine, Retailer, ClosurePeriod, SiteSettings } from "@/types";
-import { wines as seedWines } from "@/data/wines";
-import { retailers as seedRetailers } from "@/data/retailers";
-import { closures as seedClosures } from "@/data/closures";
+import {
+  AdminWine,
+  ClosurePeriod,
+  MediaItem,
+  Retailer,
+  SiteData,
+  SiteSettings,
+} from "@/types";
+import { seedMedia } from "@/data/seed";
 import { DEFAULT_SITE_SETTINGS } from "@/data/site-settings";
-import en from "@/messages/en.json";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createClient } from "@/lib/supabase/client";
+import { toRow } from "@/lib/db-mapping";
 
-export interface MediaItem {
-  id: string;
-  url: string;
-  fileName: string;
-  uploadedAt: string;
-}
-
-interface AdminWine extends Wine {
-  imageMediaId: string;
-}
+export type { MediaItem } from "@/types";
 
 interface AdminState {
   wines: AdminWine[];
@@ -62,16 +59,16 @@ interface AdminState {
 }
 
 interface AdminContextValue extends AdminState {
-  addWine: (wine: Omit<AdminWine, "id">) => void;
-  updateWine: (id: string, wine: Partial<AdminWine>) => void;
-  deleteWine: (id: string) => void;
+  addWine: (wine: Omit<AdminWine, "id">) => Promise<boolean>;
+  updateWine: (id: string, wine: Partial<AdminWine>) => Promise<boolean>;
+  deleteWine: (id: string) => Promise<boolean>;
   addMedia: (file: File) => Promise<MediaItem>;
   deleteMedia: (id: string) => { ok: boolean; usedBy: string[] };
-  addRetailer: (r: Omit<Retailer, "id">) => void;
-  deleteRetailer: (id: string) => void;
-  addClosure: (c: Omit<ClosurePeriod, "id">) => void;
-  updateClosure: (id: string, c: Partial<ClosurePeriod>) => void;
-  deleteClosure: (id: string) => void;
+  addRetailer: (r: Omit<Retailer, "id">) => Promise<boolean>;
+  deleteRetailer: (id: string) => Promise<boolean>;
+  addClosure: (c: Omit<ClosurePeriod, "id">) => Promise<boolean>;
+  updateClosure: (id: string, c: Partial<ClosurePeriod>) => Promise<boolean>;
+  deleteClosure: (id: string) => Promise<boolean>;
   wineCountUsingMedia: (mediaId: string) => number;
   setPageImage: (sectionKey: string, mediaId: string) => void;
   mediaUrl: (mediaId: string | undefined) => string | undefined;
@@ -82,198 +79,76 @@ interface AdminContextValue extends AdminState {
 
 const AdminContext = createContext<AdminContextValue | null>(null);
 
-// Section-image placeholders matching what the live public pages currently
-// show (see /data below and app/[locale]/{home,the-winery,about}/page.tsx).
-// Pre-seeding these into the media library means Roberto's very first visit
-// to Page Content already has real pickable thumbnails, not an empty grid.
-//
-// These are local files under /public/placeholders (not placehold.co) —
-// that external service doesn't reliably load on every network, which
-// showed up as broken-image icons in the media picker.
-const PAGE_SECTION_SEEDS: { key: string; fileName: string; url: string }[] = [
-  {
-    key: "home.heroBackground",
-    fileName: "pianezzo-vineyard.jpg",
-    url: "/placeholders/home-hero-background.jpg",
-  },
-  {
-    key: "home.philosophyTeaser",
-    fileName: "roberto-vineyard-teaser.jpg",
-    url: "/placeholders/home-philosophy-teaser.jpg",
-  },
-  {
-    key: "winery.philosophy",
-    fileName: "roberto-in-cellar.jpg",
-    url: "/placeholders/winery-philosophy.jpg",
-  },
-  {
-    key: "winery.vineyard",
-    fileName: "the-vineyard.jpg",
-    url: "/placeholders/winery-vineyard.jpg",
-  },
-  {
-    key: "winery.harvest",
-    fileName: "harvest.jpg",
-    url: "/placeholders/winery-harvest.jpg",
-  },
-  {
-    key: "winery.cellar",
-    fileName: "the-cellar.jpg",
-    url: "/placeholders/winery-cellar.jpg",
-  },
-  {
-    key: "about.history",
-    fileName: "estate-1958.jpg",
-    url: "/placeholders/about-history.jpg",
-  },
-  {
-    key: "about.today",
-    fileName: "estate-today.jpg",
-    url: "/placeholders/about-today.jpg",
-  },
-  {
-    key: "about.roberto",
-    fileName: "roberto-valletti.jpg",
-    url: "/team/roberto-valletti.jpg",
-  },
-];
+// How long to wait after the last keystroke / color change before saving
+// text fields and the design profile to Supabase.
+const SAVE_DELAY_MS = 800;
 
-// Extra photos already uploaded/available on disk but not assigned to any
-// specific wine or page section — they just need to show up in the Media
-// Library so Roberto (or whoever's managing the site) can pick them for
-// whatever they fit. Add more entries here as new photos come in outside
-// the normal in-app Upload flow.
-const EXTRA_MEDIA_SEEDS: { id: string; fileName: string; url: string }[] = [
-  {
-    id: "media-extra-roberto-furgone",
-    fileName: "roberto-furgone-cassette.jpg",
-    url: "/uploads/1785169848790-Billede-07.02.2024-kl.-19.04.jpg",
-  },
-];
+type DbResult = PromiseLike<{ error: { message: string } | null }>;
 
-function seedMedia(): MediaItem[] {
-  const wineMedia = seedWines.map((w) => ({
-    id: `media-${w.id}`,
-    url: w.imageUrl,
-    fileName: `${w.slug}.jpg`,
-    uploadedAt: "2026-01-15",
-  }));
-  const pageMedia = PAGE_SECTION_SEEDS.map((s) => ({
-    id: `media-page-${s.key}`,
-    url: s.url,
-    fileName: s.fileName,
-    uploadedAt: "2026-01-15",
-  }));
-  const extraMedia = EXTRA_MEDIA_SEEDS.map((s) => ({
-    id: s.id,
-    url: s.url,
-    fileName: s.fileName,
-    uploadedAt: "2026-08-19",
-  }));
-  return [...wineMedia, ...pageMedia, ...extraMedia];
+/**
+ * Runs one Supabase write. Returns true on success. On failure, tells the
+ * admin with an alert and returns false, so the caller leaves the screen
+ * unchanged. In local mode (no Supabase) this is a no-op that succeeds.
+ */
+async function save(what: string, write: () => DbResult): Promise<boolean> {
+  if (!isSupabaseConfigured) return true;
+  const { error } = await write();
+  if (error) {
+    window.alert(`Could not save ${what}: ${error.message}`);
+    return false;
+  }
+  return true;
 }
 
-function seedPageImages(): Record<string, string> {
-  return Object.fromEntries(
-    PAGE_SECTION_SEEDS.map((s) => [s.key, `media-page-${s.key}`])
-  );
-}
+const db = () => createClient();
 
-// Editable site text that Roberto can change from /admin/pages, starting
-// with just Opening Hours (see PageText component + the Visit page).
-// English only for now — same limitation as pictures, which also aren't
-// per-language. Defaults come from messages/en.json.
-function seedPageText(): Record<string, string> {
-  return {
-    "visit.openingHoursTitle": en.visit.openingHoursTitle,
-    "visit.openingHoursText": en.visit.openingHoursText,
-  };
-}
-
-function seedAdminWines(): AdminWine[] {
-  return seedWines.map((w) => ({ ...w, imageMediaId: `media-${w.id}` }));
-}
-
-let idCounter = 1000;
-function nextId() {
-  idCounter += 1;
-  // Timestamp + counter, so ids stay unique even across a page reload —
-  // a plain incrementing counter restarts at 1000 every reload and can
-  // collide with ids already saved in localStorage from a previous
-  // session (this caused "Choose" to silently misbehave on duplicate
-  // picture ids).
-  return `${Date.now().toString(36)}-${idCounter}`;
-}
-
-// --- localStorage persistence for pictures + editable text (see file header) ---
+// --- localStorage persistence (local mode only, see file header) ---
 const MEDIA_STORAGE_KEY = "valletti-admin-media-v1";
 const PAGE_IMAGES_STORAGE_KEY = "valletti-admin-page-images-v1";
 const PAGE_TEXT_STORAGE_KEY = "valletti-admin-page-text-v1";
 const SITE_SETTINGS_STORAGE_KEY = "valletti-admin-site-settings-v1";
 
+function loadStored<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeLocally(key: string, value: unknown) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Storage full or unavailable (e.g. private browsing) — the change
+    // still works for the rest of this session, it just won't persist.
+  }
+}
+
 function loadStoredMedia(): MediaItem[] | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(MEDIA_STORAGE_KEY);
-    if (!raw) return null;
-    const items = JSON.parse(raw) as MediaItem[];
-    // Self-heal: older versions of this store could save duplicate ids
-    // across reloads (a "Choose" click on one of the duplicates would
-    // silently do nothing). Keep the first occurrence of each id.
-    const seen = new Set<string>();
-    return items.filter((m) => {
-      if (seen.has(m.id)) return false;
-      seen.add(m.id);
-      return true;
-    });
-  } catch {
-    return null;
-  }
+  const items = loadStored<MediaItem[]>(MEDIA_STORAGE_KEY);
+  if (!items) return null;
+  // Self-heal: older versions could save duplicate ids. Keep the first.
+  const seen = new Set<string>();
+  return items.filter((m) => {
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
 }
 
-function loadStoredPageImages(): Record<string, string> | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(PAGE_IMAGES_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, string>) : null;
-  } catch {
-    return null;
-  }
-}
-
-function loadStoredPageText(): Record<string, string> | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(PAGE_TEXT_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, string>) : null;
-  } catch {
-    return null;
-  }
-}
-
-function loadStoredSiteSettings(): SiteSettings | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(SITE_SETTINGS_STORAGE_KEY);
-    if (!raw) return null;
-    // Merge over the defaults so a field added to SiteSettings later
-    // (e.g. a new font option) doesn't leave older saved profiles with a
-    // missing value.
-    return { ...DEFAULT_SITE_SETTINGS, ...(JSON.parse(raw) as Partial<SiteSettings>) };
-  } catch {
-    return null;
-  }
-}
-
-// Reads an uploaded file, shrinks it, and uploads it to /api/admin/upload,
-// which saves it as a REAL file under /public/uploads and returns its
-// permanent URL. This is what actually fixed pictures "disappearing":
-// the earlier version only kept pictures as data URLs in localStorage,
-// which a bug could (and did) wipe. A real file on disk can't be lost
-// that way — only the small bit of metadata (which section uses which
-// picture) still lives in localStorage, and that's cheap to lose and
-// redo. Local dev only — see the note in that route for why.
-function uploadFile(file: File, maxDim = 1400, quality = 0.85): Promise<string> {
+/**
+ * Shrinks an image in the browser (max `maxDim` px, JPEG) and uploads it.
+ * - Supabase mode: to the `media` storage bucket; returns its public URL.
+ * - Local mode: to /api/admin/upload, which saves it under /public/uploads.
+ */
+function uploadFile(
+  file: File,
+  maxDim = 1400,
+  quality = 0.85
+): Promise<{ url: string; storagePath?: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(reader.error);
@@ -305,13 +180,28 @@ function uploadFile(file: File, maxDim = 1400, quality = 0.85): Promise<string> 
               return;
             }
             try {
-              const jpegName = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+              const baseName = file.name.replace(/\.[^.]+$/, "");
+              const jpegName = baseName + ".jpg";
+
+              if (isSupabaseConfigured) {
+                const safeName = baseName.replace(/[^a-zA-Z0-9.\-_]/g, "-");
+                const storagePath = `${Date.now()}-${safeName}.jpg`;
+                const bucket = db().storage.from("media");
+                const { error } = await bucket.upload(storagePath, blob, {
+                  contentType: "image/jpeg",
+                });
+                if (error) throw new Error(error.message);
+                const { data } = bucket.getPublicUrl(storagePath);
+                resolve({ url: data.publicUrl, storagePath });
+                return;
+              }
+
               const body = new FormData();
               body.append("file", blob, jpegName);
               const res = await fetch("/api/admin/upload", { method: "POST", body });
               if (!res.ok) throw new Error("Upload failed");
               const data = (await res.json()) as { url: string };
-              resolve(data.url);
+              resolve({ url: data.url });
             } catch (err) {
               reject(err instanceof Error ? err : new Error("Upload failed"));
             }
@@ -327,93 +217,88 @@ function uploadFile(file: File, maxDim = 1400, quality = 0.85): Promise<string> 
   });
 }
 
-export function AdminStoreProvider({ children }: { children: ReactNode }) {
-  const [wines, setWines] = useState<AdminWine[]>(seedAdminWines);
-  const [media, setMedia] = useState<MediaItem[]>(seedMedia);
-  const [retailers, setRetailers] = useState<Retailer[]>(seedRetailers);
-  const [closures, setClosures] = useState<ClosurePeriod[]>(seedClosures);
-  const [pageImages, setPageImages] = useState<Record<string, string>>(seedPageImages);
-  const [pageText, setPageTextState] = useState<Record<string, string>>(seedPageText);
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+async function uploadOrAlert(file: File, maxDim?: number, quality?: number) {
+  try {
+    return await uploadFile(file, maxDim, quality);
+  } catch (err) {
+    window.alert(`Could not upload "${file.name}": ${err instanceof Error ? err.message : err}`);
+    throw err;
+  }
+}
 
-  // Hydrate from localStorage after mount (kept out of the initial
-  // useState so server and first client render match, avoiding a
-  // hydration warning — this runs once, right after). Reading an
-  // external, browser-only store (localStorage) on mount and syncing it
-  // into state is the standard pattern for this; it runs once ([]) and
-  // does not cascade, so the two setState calls below are intentional.
-  //
-  // hasHydrated guards the two "persist" effects below from firing
-  // before this one has actually finished restoring saved pictures.
-  // Without it, on every mount the persist effects would run once with
-  // the seed data (their normal mount-time run) and briefly overwrite
-  // real saved pictures in localStorage with the defaults, a heartbeat
-  // before this effect's restore caught up — a page reload landing in
-  // that window would permanently wipe real pictures back to the seed
-  // set. This was a real bug, now fixed.
+export function AdminStoreProvider({
+  children,
+  initialData,
+}: {
+  children: ReactNode;
+  initialData: SiteData;
+}) {
+  const [wines, setWines] = useState<AdminWine[]>(initialData.wines);
+  const [media, setMedia] = useState<MediaItem[]>(initialData.media);
+  const [retailers, setRetailers] = useState<Retailer[]>(initialData.retailers);
+  const [closures, setClosures] = useState<ClosurePeriod[]>(initialData.closures);
+  const [pageImages, setPageImages] = useState<Record<string, string>>(initialData.pageImages);
+  const [pageText, setPageTextState] = useState<Record<string, string>>(initialData.pageText);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(initialData.siteSettings);
+
+  // Debounced saves for fields that change on every keystroke.
+  const textTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const settingsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSettings = useRef<Partial<SiteSettings>>({});
+
+  // ── Local mode only: restore/mirror browser-saved changes ──────────
+  // Restored after mount (not in the initial useState) so the server and
+  // first client render match. hasHydrated stops the mirror effects from
+  // overwriting saved values with the defaults before the restore ran.
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
+    if (isSupabaseConfigured) return;
     const storedMedia = loadStoredMedia();
     if (storedMedia) {
-      // A browser that already has saved picks (from a previous session)
-      // would otherwise fully replace the seed list here — meaning a photo
-      // added later in code (e.g. EXTRA_MEDIA_SEEDS) would never show up
-      // for that browser. Merge instead: keep everything already saved,
-      // and add any seed photo not already present by id.
+      // Merge: keep everything saved, add any seed photo not yet present.
       const storedIds = new Set(storedMedia.map((m) => m.id));
       const missingSeeds = seedMedia().filter((m) => !storedIds.has(m.id));
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMedia([...missingSeeds, ...storedMedia]);
     }
-    const storedPageImages = loadStoredPageImages();
+    const storedPageImages = loadStored<Record<string, string>>(PAGE_IMAGES_STORAGE_KEY);
     if (storedPageImages) setPageImages(storedPageImages);
-    const storedPageText = loadStoredPageText();
+    const storedPageText = loadStored<Record<string, string>>(PAGE_TEXT_STORAGE_KEY);
     if (storedPageText) setPageTextState((prev) => ({ ...prev, ...storedPageText }));
-    const storedSiteSettings = loadStoredSiteSettings();
-    if (storedSiteSettings) setSiteSettings(storedSiteSettings);
+    const storedSettings = loadStored<Partial<SiteSettings>>(SITE_SETTINGS_STORAGE_KEY);
+    if (storedSettings) setSiteSettings({ ...DEFAULT_SITE_SETTINGS, ...storedSettings });
     setHasHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!hasHydrated) return;
-    try {
-      window.localStorage.setItem(MEDIA_STORAGE_KEY, JSON.stringify(media));
-    } catch {
-      // Storage full or unavailable (e.g. private browsing) — picture
-      // still works for the rest of this session, just won't persist.
-    }
+    if (hasHydrated) storeLocally(MEDIA_STORAGE_KEY, media);
   }, [media, hasHydrated]);
-
   useEffect(() => {
-    if (!hasHydrated) return;
-    try {
-      window.localStorage.setItem(PAGE_IMAGES_STORAGE_KEY, JSON.stringify(pageImages));
-    } catch {
-      // See note above.
-    }
+    if (hasHydrated) storeLocally(PAGE_IMAGES_STORAGE_KEY, pageImages);
   }, [pageImages, hasHydrated]);
-
   useEffect(() => {
-    if (!hasHydrated) return;
-    try {
-      window.localStorage.setItem(PAGE_TEXT_STORAGE_KEY, JSON.stringify(pageText));
-    } catch {
-      // See note above.
-    }
+    if (hasHydrated) storeLocally(PAGE_TEXT_STORAGE_KEY, pageText);
   }, [pageText, hasHydrated]);
-
   useEffect(() => {
-    if (!hasHydrated) return;
-    try {
-      window.localStorage.setItem(SITE_SETTINGS_STORAGE_KEY, JSON.stringify(siteSettings));
-    } catch {
-      // See note above.
-    }
+    if (hasHydrated) storeLocally(SITE_SETTINGS_STORAGE_KEY, siteSettings);
   }, [siteSettings, hasHydrated]);
 
-  const value = useMemo<AdminContextValue>(
-    () => ({
+  const value = useMemo<AdminContextValue>(() => {
+    function queueSettingsSave(patch: Partial<SiteSettings>) {
+      if (!isSupabaseConfigured) return;
+      pendingSettings.current = { ...pendingSettings.current, ...patch };
+      if (settingsTimer.current) clearTimeout(settingsTimer.current);
+      settingsTimer.current = setTimeout(() => {
+        const changes = pendingSettings.current;
+        pendingSettings.current = {};
+        void save("the design settings", () =>
+          db().from("site_settings").update(toRow(changes)).eq("id", 1)
+        );
+      }, SAVE_DELAY_MS);
+    }
+
+    return {
       wines,
       media,
       retailers,
@@ -421,60 +306,131 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       pageImages,
       pageText,
       siteSettings,
-      setPageImage: (sectionKey, mediaId) =>
-        setPageImages((prev) => ({ ...prev, [sectionKey]: mediaId })),
-      setPageText: (textKey, val) =>
-        setPageTextState((prev) => ({ ...prev, [textKey]: val })),
-      updateSiteSettings: (patch) =>
-        setSiteSettings((prev) => ({ ...prev, ...patch })),
-      setLogo: async (file) => {
-        // Reuses the same upload pipeline as picture uploads elsewhere
-        // (real file under /public/uploads locally; Supabase Storage in
-        // production) rather than a separate one-off for the logo.
-        const url = await uploadFile(file, 800, 0.92);
-        setSiteSettings((prev) => ({ ...prev, logoUrl: url }));
+
+      setPageImage: (sectionKey, mediaId) => {
+        setPageImages((prev) => ({ ...prev, [sectionKey]: mediaId }));
+        void save("the page picture", () =>
+          db().from("page_content").upsert({ key: sectionKey, kind: "image", value: mediaId })
+        );
       },
+
+      setPageText: (textKey, val) => {
+        setPageTextState((prev) => ({ ...prev, [textKey]: val }));
+        if (!isSupabaseConfigured) return;
+        clearTimeout(textTimers.current[textKey]);
+        textTimers.current[textKey] = setTimeout(() => {
+          void save("the page text", () =>
+            db().from("page_content").upsert({ key: textKey, kind: "text", value: val })
+          );
+        }, SAVE_DELAY_MS);
+      },
+
+      updateSiteSettings: (patch) => {
+        setSiteSettings((prev) => ({ ...prev, ...patch }));
+        queueSettingsSave(patch);
+      },
+
+      setLogo: async (file) => {
+        const { url } = await uploadOrAlert(file, 800, 0.92);
+        setSiteSettings((prev) => ({ ...prev, logoUrl: url }));
+        queueSettingsSave({ logoUrl: url });
+      },
+
       mediaUrl: (mediaId) => media.find((m) => m.id === mediaId)?.url,
-      addWine: (wine) => setWines((prev) => [...prev, { ...wine, id: nextId() }]),
-      updateWine: (id, patch) =>
-        setWines((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w))),
-      deleteWine: (id) => setWines((prev) => prev.filter((w) => w.id !== id)),
+
+      addWine: async (wine) => {
+        const row = { ...wine, id: crypto.randomUUID() };
+        const ok = await save("the wine", () => db().from("wines").insert(toRow(row)));
+        if (ok) setWines((prev) => [...prev, row]);
+        return ok;
+      },
+
+      updateWine: async (id, patch) => {
+        const ok = await save("the wine", () =>
+          db().from("wines").update(toRow({ ...patch, id })).eq("id", id)
+        );
+        if (ok) setWines((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)));
+        return ok;
+      },
+
+      deleteWine: async (id) => {
+        const ok = await save("the change", () => db().from("wines").delete().eq("id", id));
+        if (ok) setWines((prev) => prev.filter((w) => w.id !== id));
+        return ok;
+      },
+
       addMedia: async (file) => {
-        // Saved as a real file under /public/uploads (see uploadFile
-        // above) — not a fake placeholder, not a blob URL, not just
-        // localStorage. In production this is replaced with a real
-        // upload to Supabase Storage.
-        const url = await uploadFile(file);
+        const { url, storagePath } = await uploadOrAlert(file);
         const item: MediaItem = {
-          id: `media-${nextId()}`,
+          id: crypto.randomUUID(),
           url,
           fileName: file.name,
-          uploadedAt: new Date().toISOString().slice(0, 10),
+          uploadedAt: new Date().toISOString(),
+          storagePath,
         };
+        const ok = await save("the picture", () => db().from("media_items").insert(toRow(item)));
+        if (!ok) {
+          if (storagePath) void db().storage.from("media").remove([storagePath]);
+          throw new Error("Could not save the picture");
+        }
         setMedia((prev) => [item, ...prev]);
         return item;
       },
+
       deleteMedia: (id) => {
         const usedBy = wines.filter((w) => w.imageMediaId === id).map((w) => w.name);
         if (usedBy.length > 0) return { ok: false, usedBy };
-        setMedia((prev) => prev.filter((m) => m.id !== id));
+        const item = media.find((m) => m.id === id);
+        void (async () => {
+          const ok = await save("the change", () => db().from("media_items").delete().eq("id", id));
+          if (!ok) return;
+          setMedia((prev) => prev.filter((m) => m.id !== id));
+          if (isSupabaseConfigured && item?.storagePath) {
+            await db().storage.from("media").remove([item.storagePath]);
+          }
+        })();
         return { ok: true, usedBy: [] };
       },
-      addRetailer: (r) =>
-        setRetailers((prev) => [...prev, { ...r, id: nextId() }]),
-      deleteRetailer: (id) =>
-        setRetailers((prev) => prev.filter((r) => r.id !== id)),
-      addClosure: (c) =>
-        setClosures((prev) => [...prev, { ...c, id: nextId() }]),
-      updateClosure: (id, patch) =>
-        setClosures((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c))),
-      deleteClosure: (id) =>
-        setClosures((prev) => prev.filter((c) => c.id !== id)),
-      wineCountUsingMedia: (mediaId) =>
-        wines.filter((w) => w.imageMediaId === mediaId).length,
-    }),
-    [wines, media, retailers, closures, pageImages, pageText, siteSettings]
-  );
+
+      addRetailer: async (r) => {
+        const row = { ...r, id: crypto.randomUUID() };
+        const ok = await save("the retailer", () => db().from("retailers").insert(toRow(row)));
+        if (ok) setRetailers((prev) => [...prev, row]);
+        return ok;
+      },
+
+      deleteRetailer: async (id) => {
+        const ok = await save("the change", () => db().from("retailers").delete().eq("id", id));
+        if (ok) setRetailers((prev) => prev.filter((r) => r.id !== id));
+        return ok;
+      },
+
+      addClosure: async (c) => {
+        const row = { ...c, id: crypto.randomUUID() };
+        const ok = await save("the closure period", () =>
+          db().from("closure_periods").insert(toRow(row))
+        );
+        if (ok) setClosures((prev) => [...prev, row]);
+        return ok;
+      },
+
+      updateClosure: async (id, patch) => {
+        const ok = await save("the closure period", () =>
+          db().from("closure_periods").update(toRow(patch)).eq("id", id)
+        );
+        if (ok) setClosures((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+        return ok;
+      },
+
+      deleteClosure: async (id) => {
+        const ok = await save("the change", () => db().from("closure_periods").delete().eq("id", id));
+        if (ok) setClosures((prev) => prev.filter((c) => c.id !== id));
+        return ok;
+      },
+
+      wineCountUsingMedia: (mediaId) => wines.filter((w) => w.imageMediaId === mediaId).length,
+    };
+  }, [wines, media, retailers, closures, pageImages, pageText, siteSettings]);
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 }

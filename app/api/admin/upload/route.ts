@@ -3,18 +3,19 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
 /**
- * PROTOTYPE upload endpoint: saves an admin-uploaded picture as a real
- * file in /public/uploads, so it survives page reloads and doesn't
- * depend on browser storage at all (unlike the old approach, which kept
- * pictures only in localStorage and could lose them — see admin-store.tsx).
+ * LOCAL DEVELOPMENT ONLY: saves an admin-uploaded picture under
+ * /public/uploads when Supabase isn't configured.
  *
- * IMPORTANT — this only works for local development. Vercel's production
- * runtime has a read-only filesystem (except /tmp, which doesn't persist
- * between requests), so this route will NOT work once deployed. In
- * production this is replaced with a real upload to Supabase Storage —
- * see /supabase/schema.sql and the README's "Going to production" list.
+ * In production the admin panel uploads straight to the Supabase `media`
+ * storage bucket instead (see uploadFile in lib/admin-store.tsx), and this
+ * route is switched off — Vercel's filesystem is read-only anyway, and an
+ * unauthenticated write endpoint shouldn't be reachable on the live site.
  */
 export async function POST(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not available" }, { status: 404 });
+  }
+
   const formData = await req.formData();
   const file = formData.get("file");
 

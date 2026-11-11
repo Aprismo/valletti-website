@@ -6,7 +6,7 @@ import { getActiveClosure } from "@/data/closures";
 
 export default function AdminDashboard() {
   const { wines, media, retailers, closures } = useAdminStore();
-  const activeClosure = getActiveClosure();
+  const activeClosure = getActiveClosure(closures);
 
   const cards = [
     { label: "Wines", value: wines.length, href: "/admin/wines" },

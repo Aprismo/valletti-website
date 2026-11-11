@@ -3,11 +3,12 @@ import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import PageImage from "@/components/PageImage";
 import ScrollHint from "@/components/ScrollHint";
-import { wines } from "@/data/wines";
+import { getWines } from "@/lib/data";
 
 export default async function HomePage() {
   const t = await getTranslations("home");
   const tWines = await getTranslations("wines");
+  const wines = await getWines();
 
   return (
     <div>

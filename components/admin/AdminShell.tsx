@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { ReactNode, useEffect, useState } from "react";
 import { useAdminStore } from "@/lib/admin-store";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createClient } from "@/lib/supabase/client";
 
 const links = [
   { href: "/admin", label: "Dashboard" },
@@ -17,7 +19,25 @@ const links = [
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { siteSettings } = useAdminStore();
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => setEmail(data.user?.email ?? null));
+  }, [pathname]);
+
+  async function signOut() {
+    await createClient().auth.signOut();
+    router.replace("/admin/login");
+    router.refresh();
+  }
+
+  // The login page is shown on its own, without the admin menu.
+  if (pathname === "/admin/login") return <>{children}</>;
 
   return (
     <div className="min-h-screen flex bg-[#f4f2ee] text-ink">
@@ -63,10 +83,20 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       </aside>
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-white border-b border-black/10 flex items-center justify-between px-8">
-          <div className="text-sm text-ink/60">
-            Signed in as <span className="font-medium text-ink">roberto@valletti.example</span>
-          </div>
-          <button className="text-sm text-black hover:underline">Sign out</button>
+          {isSupabaseConfigured ? (
+            <>
+              <div className="text-sm text-ink/60">
+                Signed in as <span className="font-medium text-ink">{email ?? "…"}</span>
+              </div>
+              <button onClick={signOut} className="text-sm text-black hover:underline">
+                Sign out
+              </button>
+            </>
+          ) : (
+            <div className="text-sm text-ink/60">
+              Local mode — Supabase not configured, changes stay in this browser.
+            </div>
+          )}
         </header>
         <main className="flex-1 p-8 max-w-5xl">{children}</main>
       </div>

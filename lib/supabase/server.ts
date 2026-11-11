@@ -2,11 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 /**
- * Server-side Supabase client for Server Components / Route Handlers,
- * once a real Supabase project is connected (see .env.example and
- * /supabase/schema.sql). Used by the production /admin routes and by
- * the public data-fetching functions once they're switched over from
- * the /data placeholder files.
+ * Server-side Supabase client that knows who is signed in (reads the auth
+ * cookies). Not used yet — kept for future server-side admin code. Public
+ * page data is read in lib/data.ts, and /admin access is checked in
+ * proxy.ts.
  */
 export async function createClient() {
   const cookieStore = await cookies();
@@ -26,7 +25,7 @@ export async function createClient() {
             );
           } catch {
             // Called from a Server Component with no writable cookie store;
-            // safe to ignore when middleware refreshes the session.
+            // safe to ignore because proxy.ts refreshes the session.
           }
         },
       },
