@@ -125,7 +125,7 @@ function PageImageSlot({
 export default function AdminPagesEditor() {
   const [activePage, setActivePage] = useState(PAGES[0].key);
   const [lang, setLang] = useState("en");
-  const { media, pageImages, pageText, addMedia, setPageImage, setPageText, mediaUrl } =
+  const { media, pageImages, pageText, addMedia, setPageImage, setPageText, mediaUrl, flushSaves } =
     useAdminStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
@@ -142,8 +142,9 @@ export default function AdminPagesEditor() {
     setUploadTarget(null);
   }
 
+  // onBlur bubbles up from every field: leaving a field saves it at once.
   return (
-    <div>
+    <div onBlur={flushSaves}>
       <h1 className="font-serif text-3xl text-black mb-1">Page Content</h1>
       <p className="text-ink/60 text-sm mb-6">
         Edit the text and pictures that appear on Home, The Winery and About

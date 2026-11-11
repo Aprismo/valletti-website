@@ -24,7 +24,7 @@ const inputClass =
   "border border-black/15 px-3 py-2 text-sm bg-white focus:outline-none focus:border-black";
 
 export default function AdminDesignPage() {
-  const { siteSettings, updateSiteSettings, setLogo } = useAdminStore();
+  const { siteSettings, updateSiteSettings, setLogo, flushSaves } = useAdminStore();
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const heading = getFontOption(HEADING_FONTS, siteSettings.headingFont, "cormorant");
@@ -48,14 +48,15 @@ export default function AdminDesignPage() {
     e.target.value = "";
   }
 
+  // onBlur bubbles up from every field: leaving a field saves it at once.
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-3xl" onBlur={flushSaves}>
       <h1 className="font-serif text-3xl text-black mb-1">Design & Branding</h1>
       <p className="text-ink/60 text-sm mb-8">
         The design profile for this site — name, logo, colors, fonts and
         address. Change anything on this page and the whole public site and
-        admin panel update to match. Changes here save right away and are
-        live immediately.
+        admin panel update to match. Changes save automatically (watch the
+        status in the bottom-right corner) and are live immediately.
       </p>
 
       {/* Identity */}
