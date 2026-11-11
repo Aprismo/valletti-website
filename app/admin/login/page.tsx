@@ -8,7 +8,11 @@ import { createClient } from "@/lib/supabase/client";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    searchParams.get("error") === "not-admin"
+      ? "This account doesn't have admin access."
+      : null
+  );
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -16,13 +20,21 @@ function LoginForm() {
     const data = new FormData(e.currentTarget);
     setBusy(true);
     setError(null);
-    const { error } = await createClient().auth.signInWithPassword({
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({
       email: String(data.get("email") || ""),
       password: String(data.get("password") || ""),
     });
-    setBusy(false);
     if (error) {
+      setBusy(false);
       setError("Wrong email or password.");
+      return;
+    }
+    const { data: isAdmin } = await supabase.rpc("is_admin");
+    setBusy(false);
+    if (isAdmin !== true) {
+      await supabase.auth.signOut();
+      setError("This account doesn't have admin access.");
       return;
     }
     // Only allow redirects back into the admin panel.

@@ -3,7 +3,6 @@ import { wines } from "./wines";
 import { retailers } from "./retailers";
 import { closures } from "./closures";
 import { DEFAULT_SITE_SETTINGS } from "./site-settings";
-import en from "@/messages/en.json";
 import {
   EDITABLE_PAGES,
   PAGE_TEXT_FIELDS,
@@ -75,14 +74,11 @@ export function seedPageImages(): Record<string, string> {
 }
 
 // Editable site text (see /admin/pages):
-//  - Opening Hours (PageText on the Visit page) — English only for now.
-//  - Home / Winery / About texts, per language (see data/page-fields.ts),
-//    starting from the current translations in /messages.
+// Home / Winery / About texts and the Visit page's Opening Hours, per
+// language (see data/page-fields.ts), starting from the current
+// translations in /messages.
 export function seedPageText(): Record<string, string> {
-  const text: Record<string, string> = {
-    "visit.openingHoursTitle": en.visit.openingHoursTitle,
-    "visit.openingHoursText": en.visit.openingHoursText,
-  };
+  const text: Record<string, string> = {};
   for (const locale of TEXT_LOCALES) {
     for (const page of EDITABLE_PAGES) {
       for (const { key } of PAGE_TEXT_FIELDS[page]) {

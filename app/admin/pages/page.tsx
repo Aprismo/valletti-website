@@ -5,7 +5,6 @@ import Image from "next/image";
 import { useAdminStore, MediaItem } from "@/lib/admin-store";
 import {
   PAGE_TEXT_FIELDS,
-  PageTextField,
   defaultPageText,
   pageTextKey,
 } from "@/data/page-fields";
@@ -52,10 +51,9 @@ const PAGES = [
   {
     key: "visit",
     label: "Visit",
-    // No translated fields/pictures here — this page's editable content
-    // (Opening Hours) is handled separately below.
-    fields: [] as PageTextField[],
-    images: [],
+    // Opening Hours, per language. No pictures on this page.
+    fields: PAGE_TEXT_FIELDS.visit,
+    images: [] as { key: string; label: string }[],
   },
 ];
 
@@ -169,36 +167,9 @@ export default function AdminPagesEditor() {
         ))}
       </div>
 
-      {activePage === "visit" ? (
-        <div className="bg-white border border-black/10 p-6">
-          <h2 className="font-medium mb-1">Opening Hours</h2>
-          <p className="text-xs text-ink/50 mb-4">
-            Shown on the Visit page. Changes here save right away and are
-            live on the site — no separate Save button needed.
-          </p>
-          <div className="grid gap-5 max-w-lg">
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-ink/70">Title</span>
-              <input
-                className="input"
-                value={pageText["visit.openingHoursTitle"] ?? ""}
-                onChange={(e) => setPageText("visit.openingHoursTitle", e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-ink/70">Hours &amp; visit info</span>
-              <textarea
-                rows={4}
-                className="input"
-                value={pageText["visit.openingHoursText"] ?? ""}
-                onChange={(e) => setPageText("visit.openingHoursText", e.target.value)}
-              />
-            </label>
-          </div>
-        </div>
-      ) : (
-        <>
+      <>
           {/* Pictures for this page */}
+          {page.images.length > 0 && (
           <div className="bg-white border border-black/10 p-6 mb-6">
             <h2 className="font-medium mb-1">Pictures</h2>
             <p className="text-xs text-ink/50 mb-4">
@@ -237,6 +208,7 @@ export default function AdminPagesEditor() {
               onChange={handleUpload}
             />
           </div>
+          )}
 
           <div className="bg-white border border-black/10 p-6">
             <div className="flex items-center justify-between mb-6">
@@ -291,7 +263,6 @@ export default function AdminPagesEditor() {
             </div>
           </div>
         </>
-      )}
 
       <style jsx global>{`
         .input {

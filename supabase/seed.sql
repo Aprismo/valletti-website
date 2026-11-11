@@ -42,8 +42,6 @@ insert into page_content (key, kind, value) values
   ('about.history', 'image', 'media-page-about.history'),
   ('about.today', 'image', 'media-page-about.today'),
   ('about.roberto', 'image', 'media-page-about.roberto'),
-  ('visit.openingHoursTitle', 'text', 'Opening Hours'),
-  ('visit.openingHoursText', 'text', 'Visits by appointment only — get in touch and we''ll find a time that works. Typically Monday–Saturday, 10:00–17:00.'),
   ('en:home.introTitle', 'text', 'A family winery, made the slow way'),
   ('en:home.introText', 'text', 'For three generations, the Valletti family has tended the same hillside vineyards, working with the seasons rather than against them. Every bottle carries the mark of that patience — and of Roberto Valletti, who still walks the rows every morning.'),
   ('en:winery.openingLine', 'text', 'When family winemaking tradition, academic knowledge and innovation come together, there is an opportunity to create truly exceptional wines.'),
@@ -63,6 +61,8 @@ insert into page_content (key, kind, value) values
   ('en:about.historyText', 'text', 'In 1958, Roberto''s grandfather, Alessandro Valletti, planted the first rows of Dolcetto on a steep, stony hillside that most of his neighbours considered too difficult to farm. He was wrong about it being difficult — it just required patience. His son Marco expanded the estate in the 1980s, and today Roberto Valletti continues the work, having taken over the cellar in 2005 after studying oenology and working harvests across Italy and France.'),
   ('en:about.todayTitle', 'text', 'Valletti Today'),
   ('en:about.todayText', 'text', 'Today the estate spans a small number of carefully tended hectares across two vineyard sites. We remain a family operation — Roberto in the vineyard and cellar, with his wife Elena managing the estate and welcoming visitors. We produce a limited number of wines each year, all from our own grapes, all made on site.'),
+  ('en:visit.openingHoursTitle', 'text', 'Opening Hours'),
+  ('en:visit.openingHoursText', 'text', 'Visits by appointment only — get in touch and we''ll find a time that works. Typically Monday–Saturday, 10:00–17:00.'),
   ('nl:home.introTitle', 'text', 'Een familiewijnhuis, op de langzame manier'),
   ('nl:home.introText', 'text', 'Al drie generaties lang onderhoudt de familie Valletti dezelfde wijngaarden op de heuvel, werkend met de seizoenen in plaats van ertegen. Elke fles draagt het teken van dat geduld — en van Roberto Valletti, die nog elke ochtend door de rijen loopt.'),
   ('nl:winery.openingLine', 'text', 'Wanneer familietraditie in de wijnbouw, academische kennis en innovatie samenkomen, ontstaat de kans om werkelijk uitzonderlijke wijnen te maken.'),
@@ -82,6 +82,8 @@ insert into page_content (key, kind, value) values
   ('nl:about.historyText', 'text', 'In 1958 plantte Roberto''s grootvader, Alessandro Valletti, de eerste rijen Dolcetto op een steile, stenige heuvel die de meeste van zijn buren te lastig vonden om te bewerken. Hij had ongelijk over de moeilijkheid — het vroeg alleen om geduld. Zijn zoon Marco breidde het landgoed in de jaren tachtig uit, en vandaag zet Roberto Valletti het werk voort. Hij nam de kelder in 2005 over, na een opleiding oenologie en oogstwerk in heel Italië en Frankrijk.'),
   ('nl:about.todayTitle', 'text', 'Valletti Vandaag'),
   ('nl:about.todayText', 'text', 'Tegenwoordig omvat het landgoed een klein aantal zorgvuldig onderhouden hectares op twee wijngaardlocaties. Wij blijven een familiebedrijf — Roberto in de wijngaard en de kelder, met zijn vrouw Elena die het landgoed beheert en bezoekers verwelkomt. Wij produceren elk jaar een beperkt aantal wijnen, allemaal van eigen druiven, allemaal gemaakt op het landgoed zelf.'),
+  ('nl:visit.openingHoursTitle', 'text', 'Openingstijden'),
+  ('nl:visit.openingHoursText', 'text', 'Bezoeken alleen op afspraak — neem contact op en we vinden een geschikt moment. Doorgaans maandag–zaterdag, 10.00–17.00 uur.'),
   ('de:home.introTitle', 'text', 'Ein Familienweingut, auf die langsame Art'),
   ('de:home.introText', 'text', 'Seit drei Generationen pflegt die Familie Valletti dieselben Hügelweinberge und arbeitet mit den Jahreszeiten statt gegen sie. Jede Flasche trägt das Zeichen dieser Geduld — und das von Roberto Valletti, der noch jeden Morgen durch die Rebzeilen geht.'),
   ('de:winery.openingLine', 'text', 'Wenn familiäre Weinbautradition, akademisches Wissen und Innovation zusammenkommen, entsteht die Möglichkeit, wahrhaft außergewöhnliche Weine zu schaffen.'),
@@ -101,6 +103,8 @@ insert into page_content (key, kind, value) values
   ('de:about.historyText', 'text', '1958 pflanzte Robertos Großvater, Alessandro Valletti, die ersten Reihen Dolcetto auf einem steilen, steinigen Hügel, den die meisten seiner Nachbarn für zu schwierig zu bewirtschaften hielten. Er irrte sich bezüglich der Schwierigkeit — es erforderte nur Geduld. Sein Sohn Marco erweiterte das Weingut in den 1980er Jahren, und heute führt Roberto Valletti die Arbeit fort. Er übernahm den Keller 2005, nach einem Önologiestudium und Erntearbeit in ganz Italien und Frankreich.'),
   ('de:about.todayTitle', 'text', 'Valletti Heute'),
   ('de:about.todayText', 'text', 'Heute umfasst das Weingut eine kleine Anzahl sorgfältig gepflegter Hektar an zwei Weinbergstandorten. Wir bleiben ein Familienbetrieb — Roberto im Weinberg und im Keller, seine Frau Elena leitet das Anwesen und empfängt Besucher. Wir produzieren jedes Jahr eine begrenzte Anzahl von Weinen, alle aus eigenen Trauben, alle vor Ort hergestellt.'),
+  ('de:visit.openingHoursTitle', 'text', 'Öffnungszeiten'),
+  ('de:visit.openingHoursText', 'text', 'Besuche nur nach Vereinbarung — kontaktieren Sie uns, und wir finden einen passenden Termin. In der Regel Montag–Samstag, 10:00–17:00 Uhr.'),
   ('fr:home.introTitle', 'text', 'Un domaine familial, à l''ancienne'),
   ('fr:home.introText', 'text', 'Depuis trois générations, la famille Valletti entretient les mêmes vignobles de coteau, travaillant avec les saisons plutôt que contre elles. Chaque bouteille porte la marque de cette patience — et celle de Roberto Valletti, qui parcourt encore les rangs chaque matin.'),
   ('fr:winery.openingLine', 'text', 'Lorsque la tradition viticole familiale, le savoir académique et l''innovation se rencontrent, naît la possibilité de créer des vins véritablement exceptionnels.'),
@@ -120,6 +124,8 @@ insert into page_content (key, kind, value) values
   ('fr:about.historyText', 'text', 'En 1958, le grand-père de Roberto, Alessandro Valletti, planta les premiers rangs de Dolcetto sur une colline pentue et caillouteuse que la plupart de ses voisins jugeaient trop difficile à cultiver. Il avait tort sur la difficulté — cela ne demandait que de la patience. Son fils Marco agrandit le domaine dans les années 1980, et aujourd''hui Roberto Valletti poursuit ce travail, ayant repris le chai en 2005 après des études d''œnologie et des vendanges à travers l''Italie et la France.'),
   ('fr:about.todayTitle', 'text', 'Valletti Aujourd''hui'),
   ('fr:about.todayText', 'text', 'Aujourd''hui, le domaine s''étend sur un petit nombre d''hectares soigneusement entretenus, répartis sur deux sites viticoles. Nous restons une exploitation familiale — Roberto à la vigne et au chai, son épouse Elena gérant le domaine et accueillant les visiteurs. Nous produisons chaque année un nombre limité de vins, tous issus de nos propres raisins, tous élaborés sur place.'),
+  ('fr:visit.openingHoursTitle', 'text', 'Horaires d''ouverture'),
+  ('fr:visit.openingHoursText', 'text', 'Visites uniquement sur rendez-vous — contactez-nous et nous trouverons un moment qui convient. Généralement du lundi au samedi, de 10h00 à 17h00.'),
   ('it:home.introTitle', 'text', 'Una cantina di famiglia, con calma'),
   ('it:home.introText', 'text', 'Da tre generazioni, la famiglia Valletti si prende cura degli stessi vigneti collinari, lavorando insieme alle stagioni e non contro di esse. Ogni bottiglia porta il segno di questa pazienza — e quello di Roberto Valletti, che ogni mattina cammina ancora tra i filari.'),
   ('it:winery.openingLine', 'text', 'Quando la tradizione familiare della vinificazione, la conoscenza accademica e l''innovazione si incontrano, nasce l''opportunità di creare vini davvero eccezionali.'),
@@ -138,7 +144,9 @@ insert into page_content (key, kind, value) values
   ('it:about.historyTitle', 'text', 'Come è Iniziata'),
   ('it:about.historyText', 'text', 'Nel 1958, il nonno di Roberto, Alessandro Valletti, piantò i primi filari di Dolcetto su una collina ripida e sassosa che la maggior parte dei vicini considerava troppo difficile da coltivare. Si sbagliava sulla difficoltà — serviva solo pazienza. Suo figlio Marco ampliò la tenuta negli anni ''80 e oggi Roberto Valletti continua il lavoro, avendo preso in mano la cantina nel 2005 dopo aver studiato enologia e fatto vendemmie in giro per l''Italia e la Francia.'),
   ('it:about.todayTitle', 'text', 'Valletti Oggi'),
-  ('it:about.todayText', 'text', 'Oggi la tenuta si estende su un numero contenuto di ettari curati con attenzione, su due appezzamenti. Restiamo un''azienda familiare — Roberto in vigna e in cantina, con la moglie Elena che gestisce la tenuta e accoglie i visitatori. Produciamo ogni anno un numero limitato di vini, tutti dalle nostre uve, tutti realizzati in azienda.')
+  ('it:about.todayText', 'text', 'Oggi la tenuta si estende su un numero contenuto di ettari curati con attenzione, su due appezzamenti. Restiamo un''azienda familiare — Roberto in vigna e in cantina, con la moglie Elena che gestisce la tenuta e accoglie i visitatori. Produciamo ogni anno un numero limitato di vini, tutti dalle nostre uve, tutti realizzati in azienda.'),
+  ('it:visit.openingHoursTitle', 'text', 'Orari di Apertura'),
+  ('it:visit.openingHoursText', 'text', 'Visite solo su appuntamento — contattateci e troveremo un orario adatto. Generalmente dal lunedì al sabato, dalle 10:00 alle 17:00.')
 on conflict (key) do nothing;
 
 update site_settings set name = 'Valletti', legal_name = 'Azienda Agricola Valletti', tagline = 'Azienda Agricola Valletti — Piemonte, Italy', logo_url = '/brand/logo.jpeg', color_primary = '#5c1a2b', color_primary_dark = '#3a0f1c', color_accent = '#b98b3e', color_background = '#f6f0e6', color_background_alt = '#ece2d0', color_text = '#2a2320', color_highlight = '#a8583a', heading_font = 'cormorant', body_font = 'inter', address_line1 = 'Azienda Agricola Valletti', address_line2 = 'Borgata Pianezzo, 32', address_line3 = '12063 Dogliani (CN), Piemonte, Italy', phone = '+39 0173 71226' where id = 1;

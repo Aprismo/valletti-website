@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
-import { pageTextKey } from "@/data/page-fields";
+import { EditablePage, pageTextKey } from "@/data/page-fields";
 import { createClient } from "@supabase/supabase-js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fromRow } from "@/lib/db-mapping";
@@ -100,7 +100,7 @@ export async function getClosures(): Promise<ClosurePeriod[]> {
  * edited under Admin → Page Content (stored per language in Supabase)
  * take precedence over the defaults in /messages.
  */
-export async function getEditableTranslations(namespace: "home" | "winery" | "about") {
+export async function getEditableTranslations(namespace: EditablePage) {
   const [t, locale, { pageText }] = await Promise.all([
     getTranslations(namespace),
     getLocale(),

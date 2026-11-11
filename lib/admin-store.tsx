@@ -83,18 +83,27 @@ const AdminContext = createContext<AdminContextValue | null>(null);
 // text fields and the design profile to Supabase.
 const SAVE_DELAY_MS = 800;
 
-type DbResult = PromiseLike<{ error: { message: string } | null }>;
+type DbResult = PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
 
 /**
  * Runs one Supabase write. Returns true on success. On failure, tells the
  * admin with an alert and returns false, so the caller leaves the screen
  * unchanged. In local mode (no Supabase) this is a no-op that succeeds.
+ *
+ * Every write must end in `.select(...)` so it returns the rows it
+ * touched: when row-level security blocks an update or delete (e.g. the
+ * session expired, or the user isn't in `admins`), Supabase reports no
+ * error, just 0 rows — so 0 rows is treated as a failure too.
  */
 async function save(what: string, write: () => DbResult): Promise<boolean> {
   if (!isSupabaseConfigured) return true;
-  const { error } = await write();
-  if (error) {
-    window.alert(`Could not save ${what}: ${error.message}`);
+  const { data, error } = await write();
+  if (error || !data || data.length === 0) {
+    window.alert(
+      `Could not save ${what}: ${
+        error?.message ?? "not allowed or not found — try signing out and in again."
+      }`
+    );
     return false;
   }
   return true;
@@ -293,7 +302,7 @@ export function AdminStoreProvider({
         const changes = pendingSettings.current;
         pendingSettings.current = {};
         void save("the design settings", () =>
-          db().from("site_settings").update(toRow(changes)).eq("id", 1)
+          db().from("site_settings").update(toRow(changes)).eq("id", 1).select("id")
         );
       }, SAVE_DELAY_MS);
     }
@@ -310,7 +319,7 @@ export function AdminStoreProvider({
       setPageImage: (sectionKey, mediaId) => {
         setPageImages((prev) => ({ ...prev, [sectionKey]: mediaId }));
         void save("the page picture", () =>
-          db().from("page_content").upsert({ key: sectionKey, kind: "image", value: mediaId })
+          db().from("page_content").upsert({ key: sectionKey, kind: "image", value: mediaId }).select("key")
         );
       },
 
@@ -320,7 +329,7 @@ export function AdminStoreProvider({
         clearTimeout(textTimers.current[textKey]);
         textTimers.current[textKey] = setTimeout(() => {
           void save("the page text", () =>
-            db().from("page_content").upsert({ key: textKey, kind: "text", value: val })
+            db().from("page_content").upsert({ key: textKey, kind: "text", value: val }).select("key")
           );
         }, SAVE_DELAY_MS);
       },
@@ -340,21 +349,21 @@ export function AdminStoreProvider({
 
       addWine: async (wine) => {
         const row = { ...wine, id: crypto.randomUUID() };
-        const ok = await save("the wine", () => db().from("wines").insert(toRow(row)));
+        const ok = await save("the wine", () => db().from("wines").insert(toRow(row)).select("id"));
         if (ok) setWines((prev) => [...prev, row]);
         return ok;
       },
 
       updateWine: async (id, patch) => {
         const ok = await save("the wine", () =>
-          db().from("wines").update(toRow({ ...patch, id })).eq("id", id)
+          db().from("wines").update(toRow({ ...patch, id })).eq("id", id).select("id")
         );
         if (ok) setWines((prev) => prev.map((w) => (w.id === id ? { ...w, ...patch } : w)));
         return ok;
       },
 
       deleteWine: async (id) => {
-        const ok = await save("the change", () => db().from("wines").delete().eq("id", id));
+        const ok = await save("the change", () => db().from("wines").delete().eq("id", id).select("id"));
         if (ok) setWines((prev) => prev.filter((w) => w.id !== id));
         return ok;
       },
@@ -368,7 +377,7 @@ export function AdminStoreProvider({
           uploadedAt: new Date().toISOString(),
           storagePath,
         };
-        const ok = await save("the picture", () => db().from("media_items").insert(toRow(item)));
+        const ok = await save("the picture", () => db().from("media_items").insert(toRow(item)).select("id"));
         if (!ok) {
           if (storagePath) void db().storage.from("media").remove([storagePath]);
           throw new Error("Could not save the picture");
@@ -382,7 +391,7 @@ export function AdminStoreProvider({
         if (usedBy.length > 0) return { ok: false, usedBy };
         const item = media.find((m) => m.id === id);
         void (async () => {
-          const ok = await save("the change", () => db().from("media_items").delete().eq("id", id));
+          const ok = await save("the change", () => db().from("media_items").delete().eq("id", id).select("id"));
           if (!ok) return;
           setMedia((prev) => prev.filter((m) => m.id !== id));
           if (isSupabaseConfigured && item?.storagePath) {
@@ -394,13 +403,13 @@ export function AdminStoreProvider({
 
       addRetailer: async (r) => {
         const row = { ...r, id: crypto.randomUUID() };
-        const ok = await save("the retailer", () => db().from("retailers").insert(toRow(row)));
+        const ok = await save("the retailer", () => db().from("retailers").insert(toRow(row)).select("id"));
         if (ok) setRetailers((prev) => [...prev, row]);
         return ok;
       },
 
       deleteRetailer: async (id) => {
-        const ok = await save("the change", () => db().from("retailers").delete().eq("id", id));
+        const ok = await save("the change", () => db().from("retailers").delete().eq("id", id).select("id"));
         if (ok) setRetailers((prev) => prev.filter((r) => r.id !== id));
         return ok;
       },
@@ -408,7 +417,7 @@ export function AdminStoreProvider({
       addClosure: async (c) => {
         const row = { ...c, id: crypto.randomUUID() };
         const ok = await save("the closure period", () =>
-          db().from("closure_periods").insert(toRow(row))
+          db().from("closure_periods").insert(toRow(row)).select("id")
         );
         if (ok) setClosures((prev) => [...prev, row]);
         return ok;
@@ -416,14 +425,14 @@ export function AdminStoreProvider({
 
       updateClosure: async (id, patch) => {
         const ok = await save("the closure period", () =>
-          db().from("closure_periods").update(toRow(patch)).eq("id", id)
+          db().from("closure_periods").update(toRow(patch)).eq("id", id).select("id")
         );
         if (ok) setClosures((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
         return ok;
       },
 
       deleteClosure: async (id) => {
-        const ok = await save("the change", () => db().from("closure_periods").delete().eq("id", id));
+        const ok = await save("the change", () => db().from("closure_periods").delete().eq("id", id).select("id"));
         if (ok) setClosures((prev) => prev.filter((c) => c.id !== id));
         return ok;
       },

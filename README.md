@@ -18,21 +18,24 @@ to run on Vercel with Supabase as the backend.
   an error in production.
 - **The `/admin` panel** is protected by **Supabase Auth** (email +
   password): `proxy.ts` sends anyone not signed in to `/admin/login`.
-  Changes are saved to Supabase and pictures uploaded to the `media`
-  storage bucket; row-level security (`supabase/schema.sql`) means only
-  signed-in users can write. Without Supabase, the admin runs in local
+  Only users listed in the `admins` table get in — signed in alone isn't
+  enough. Changes are saved to Supabase and pictures uploaded to the
+  `media` storage bucket; row-level security (`supabase/schema.sql`,
+  `is_admin()`) means only admins can write, even through the public
+  API. Without Supabase, the admin runs in local
   mode (changes stay in your browser, uploads go to `/public/uploads`)
   — and is locked in production builds, so a deploy with missing env
   vars never exposes an open admin.
 - **`/admin/design`** (Design & Branding) lets Roberto set the site's
   name, logo, colors, fonts, and address — the Visit page's map and
   contact info are built directly from that address, in every language.
-- **Page Content** (`/admin/pages`): pictures, the Opening Hours text,
-  and the Home / The Winery / About texts are saved to Supabase. Page
-  texts are stored per language (`page_content` key
+- **Page Content** (`/admin/pages`): pictures and the texts for Home /
+  The Winery / About / Visit (Opening Hours) are saved to Supabase.
+  Texts are stored per language (`page_content` key
   `<locale>:<page>.<field>`, fields listed in `data/page-fields.ts`);
   anything not saved falls back to the translations in `/messages`.
-  Opening Hours is still one English text shown in every language.
+- **Contact form spam protection:** a hidden honeypot field and a limit
+  of 5 requests per IP per 10 minutes (in memory, per server instance).
 
 ## Running it locally
 
@@ -65,7 +68,8 @@ Step-by-step checklist: **[GO-LIVE.md](GO-LIVE.md)**. In short:
 1. Create a Supabase project, run `supabase/schema.sql` then
    `supabase/seed.sql` in the SQL editor (creates tables, RLS, the
    `media` bucket, and loads the current wines/pictures/design).
-2. Turn off public sign-ups and create Roberto's admin user.
+2. Create Roberto's user, add him to the `admins` table, and turn off
+   public sign-ups.
 3. Verify Roberto's domain in Resend and create an API key.
 4. Deploy to Vercel with the env vars above and connect the domain.
 

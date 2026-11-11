@@ -18,7 +18,7 @@ export async function proxy(request: NextRequest) {
 }
 
 /**
- * Only signed-in Supabase users may open /admin; everyone else is sent to
+ * Only signed-in Supabase users listed as admins may open /admin; everyone else is sent to
  * /admin/login. Also refreshes the Supabase session cookie.
  *
  * Without Supabase configured: open in local development (prototype
@@ -55,13 +55,17 @@ async function protectAdmin(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  // Signed in is not enough: the user must also be listed in `admins`
+  // (see is_admin() in supabase/schema.sql).
+  const isAdmin = user ? (await supabase.rpc("is_admin")).data === true : false;
 
-  if (!user && !isLogin) {
+  if (!isAdmin && !isLogin) {
     const loginUrl = new URL(LOGIN_PATH, request.url);
     loginUrl.searchParams.set("next", pathname + search);
+    if (user) loginUrl.searchParams.set("error", "not-admin");
     return NextResponse.redirect(loginUrl);
   }
-  if (user && isLogin) {
+  if (isAdmin && isLogin) {
     return NextResponse.redirect(new URL("/admin", request.url));
   }
   return response;

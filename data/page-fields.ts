@@ -10,7 +10,7 @@ import it from "@/messages/it.json";
  * under the key `<locale>:<page>.<field>`, e.g. "it:home.introTitle".
  * Anything not saved yet falls back to the translation in /messages.
  */
-export const EDITABLE_PAGES = ["home", "winery", "about"] as const;
+export const EDITABLE_PAGES = ["home", "winery", "about", "visit"] as const;
 export type EditablePage = (typeof EDITABLE_PAGES)[number];
 
 export interface PageTextField {
@@ -44,6 +44,10 @@ export const PAGE_TEXT_FIELDS: Record<EditablePage, PageTextField[]> = {
     { key: "historyText", label: "History text", multiline: true },
     { key: "todayTitle", label: "Today title" },
     { key: "todayText", label: "Today text", multiline: true },
+  ],
+  visit: [
+    { key: "openingHoursTitle", label: "Opening hours — title" },
+    { key: "openingHoursText", label: "Opening hours — hours & visit info", multiline: true },
   ],
 };
 

@@ -127,13 +127,33 @@ create table site_settings (
 insert into site_settings (id) values (1);
 
 -- ── Admin users ──────────────────────────────────────────────────────
--- Handled by Supabase Auth (auth.users). Create Roberto's user by hand
--- and TURN OFF public sign-ups (see GO-LIVE.md) — every signed-in user
--- can edit the site.
+-- Logins are Supabase Auth users (auth.users), but being signed in is
+-- NOT enough to edit the site: only users listed in `admins` can write.
+-- So even if public sign-ups were left on by mistake, a stranger who
+-- creates an account still can't change anything.
+-- Add Roberto after creating his user (see GO-LIVE.md):
+--   insert into admins (user_id) select id from auth.users where email = 'roberto@…';
+create table admins (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table admins enable row level security;
+-- No policies on purpose: the list can only be changed from the SQL
+-- editor / dashboard, never through the public API.
+
+-- True when the current request comes from a signed-in admin.
+-- security definer so it can read `admins` despite RLS.
+create function is_admin() returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (select 1 from public.admins where user_id = auth.uid());
+$$;
+revoke execute on function is_admin() from public;
+grant execute on function is_admin() to anon, authenticated;
 
 -- ── Row Level Security ───────────────────────────────────────────────
--- Public (anon) can READ site content. Only signed-in users can write.
--- Inquiries: anon can INSERT only, never read.
+-- Public (anon) can READ site content. Only admins can write.
+-- Inquiries: not used yet — admins can read, nobody can write via the API.
 
 alter table wines enable row level security;
 alter table media_items enable row level security;
@@ -150,29 +170,32 @@ create policy "public read retailers" on retailers for select using (true);
 create policy "public read closure_periods" on closure_periods for select using (true);
 create policy "public read site_settings" on site_settings for select using (true);
 
-create policy "admin write wines" on wines for all to authenticated using (true) with check (true);
-create policy "admin write media_items" on media_items for all to authenticated using (true) with check (true);
-create policy "admin write page_content" on page_content for all to authenticated using (true) with check (true);
-create policy "admin write retailers" on retailers for all to authenticated using (true) with check (true);
-create policy "admin write closure_periods" on closure_periods for all to authenticated using (true) with check (true);
-create policy "admin write site_settings" on site_settings for update to authenticated using (true) with check (true);
+create policy "admin write wines" on wines for all to authenticated using (is_admin()) with check (is_admin());
+create policy "admin write media_items" on media_items for all to authenticated using (is_admin()) with check (is_admin());
+create policy "admin write page_content" on page_content for all to authenticated using (is_admin()) with check (is_admin());
+create policy "admin write retailers" on retailers for all to authenticated using (is_admin()) with check (is_admin());
+create policy "admin write closure_periods" on closure_periods for all to authenticated using (is_admin()) with check (is_admin());
+create policy "admin write site_settings" on site_settings for update to authenticated using (is_admin()) with check (is_admin());
 
-create policy "public submit inquiries" on inquiries for insert with check (true);
-create policy "admin read inquiries" on inquiries for select to authenticated using (true);
+create policy "admin read inquiries" on inquiries for select to authenticated using (is_admin());
 
 -- ── Storage bucket for the picture library ──────────────────────────
--- Public read (pictures are shown on the public site); only signed-in
--- users can upload, replace or delete.
-insert into storage.buckets (id, name, public)
-values ('media', 'media', true)
-on conflict (id) do update set public = true;
+-- Public read (pictures are shown on the public site); only admins can
+-- upload, replace or delete. Images only, max 10 MB per file (the admin
+-- panel shrinks pictures to JPEG before upload, so real files are small).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('media', 'media', true, 10485760, array['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+on conflict (id) do update set
+  public = true,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
 
 create policy "admin upload media" on storage.objects
-  for insert to authenticated with check (bucket_id = 'media');
+  for insert to authenticated with check (bucket_id = 'media' and is_admin());
 create policy "admin update media" on storage.objects
-  for update to authenticated using (bucket_id = 'media');
+  for update to authenticated using (bucket_id = 'media' and is_admin());
 create policy "admin delete media" on storage.objects
-  for delete to authenticated using (bucket_id = 'media');
+  for delete to authenticated using (bucket_id = 'media' and is_admin());
 -- Deleting a file through the API also needs select permission.
 create policy "admin read media" on storage.objects
-  for select to authenticated using (bucket_id = 'media');
+  for select to authenticated using (bucket_id = 'media' and is_admin());
