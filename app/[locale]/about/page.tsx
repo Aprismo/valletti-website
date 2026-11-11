@@ -1,8 +1,8 @@
-import { getTranslations } from "next-intl/server";
+import { getEditableTranslations } from "@/lib/data";
 import PageImage from "@/components/PageImage";
 
 export default async function AboutPage() {
-  const t = await getTranslations("about");
+  const t = await getEditableTranslations("about");
 
   return (
     <div>

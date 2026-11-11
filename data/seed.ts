@@ -4,6 +4,13 @@ import { retailers } from "./retailers";
 import { closures } from "./closures";
 import { DEFAULT_SITE_SETTINGS } from "./site-settings";
 import en from "@/messages/en.json";
+import {
+  EDITABLE_PAGES,
+  PAGE_TEXT_FIELDS,
+  TEXT_LOCALES,
+  defaultPageText,
+  pageTextKey,
+} from "./page-fields";
 
 /**
  * The site's starting content, built from the placeholder files in /data.
@@ -67,13 +74,23 @@ export function seedPageImages(): Record<string, string> {
   return Object.fromEntries(PAGE_SECTION_SEEDS.map((s) => [s.key, `media-page-${s.key}`]));
 }
 
-// Editable site text (see PageText + /admin/pages). English only for now;
-// defaults come from messages/en.json.
+// Editable site text (see /admin/pages):
+//  - Opening Hours (PageText on the Visit page) — English only for now.
+//  - Home / Winery / About texts, per language (see data/page-fields.ts),
+//    starting from the current translations in /messages.
 export function seedPageText(): Record<string, string> {
-  return {
+  const text: Record<string, string> = {
     "visit.openingHoursTitle": en.visit.openingHoursTitle,
     "visit.openingHoursText": en.visit.openingHoursText,
   };
+  for (const locale of TEXT_LOCALES) {
+    for (const page of EDITABLE_PAGES) {
+      for (const { key } of PAGE_TEXT_FIELDS[page]) {
+        text[pageTextKey(locale, page, key)] = defaultPageText(locale, page, key);
+      }
+    }
+  }
+  return text;
 }
 
 export function seedAdminWines(): AdminWine[] {

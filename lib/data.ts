@@ -1,4 +1,6 @@
 import { cache } from "react";
+import { getLocale, getTranslations } from "next-intl/server";
+import { pageTextKey } from "@/data/page-fields";
 import { createClient } from "@supabase/supabase-js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fromRow } from "@/lib/db-mapping";
@@ -91,4 +93,19 @@ export async function getRetailers(): Promise<Retailer[]> {
 
 export async function getClosures(): Promise<ClosurePeriod[]> {
   return (await getSiteData()).closures;
+}
+
+/**
+ * Like next-intl's getTranslations(namespace), but texts Roberto has
+ * edited under Admin → Page Content (stored per language in Supabase)
+ * take precedence over the defaults in /messages.
+ */
+export async function getEditableTranslations(namespace: "home" | "winery" | "about") {
+  const [t, locale, { pageText }] = await Promise.all([
+    getTranslations(namespace),
+    getLocale(),
+    getSiteData(),
+  ]);
+  return (key: string): string =>
+    pageText[pageTextKey(locale, namespace, key)] ?? t(key as Parameters<typeof t>[0]);
 }

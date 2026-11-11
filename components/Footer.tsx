@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import NextLink from "next/link";
-import Image from "next/image";
 import { BrandName, BrandLegalName } from "./BrandMark";
 
 export default async function Footer() {
@@ -42,17 +41,6 @@ export default async function Footer() {
       <div className="border-t border-cream/10 px-6 py-4 text-xs text-center flex flex-col items-center gap-1">
         <span>
           © {year} <BrandLegalName />. {t("rights")}
-        </span>
-        <span className="text-cream/50 flex items-center gap-1.5">
-          Made by
-          <Image
-            src="/images/aprismo-logo.png"
-            alt="Aprismo"
-            width={14}
-            height={14}
-            className="inline-block opacity-70"
-          />
-          Aprismo
         </span>
       </div>
     </footer>

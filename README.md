@@ -27,10 +27,12 @@ to run on Vercel with Supabase as the backend.
 - **`/admin/design`** (Design & Branding) lets Roberto set the site's
   name, logo, colors, fonts, and address — the Visit page's map and
   contact info are built directly from that address, in every language.
-- Known limitation: on **Page Content**, the per-page text fields for
-  Home / The Winery / About are still a mockup ("Saved (demo only)").
-  The pictures there and the Opening Hours text on the Visit tab are
-  saved for real.
+- **Page Content** (`/admin/pages`): pictures, the Opening Hours text,
+  and the Home / The Winery / About texts are saved to Supabase. Page
+  texts are stored per language (`page_content` key
+  `<locale>:<page>.<field>`, fields listed in `data/page-fields.ts`);
+  anything not saved falls back to the translations in `/messages`.
+  Opening Hours is still one English text shown in every language.
 
 ## Running it locally
 

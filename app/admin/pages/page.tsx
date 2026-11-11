@@ -2,8 +2,13 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import en from "@/messages/en.json";
 import { useAdminStore, MediaItem } from "@/lib/admin-store";
+import {
+  PAGE_TEXT_FIELDS,
+  PageTextField,
+  defaultPageText,
+  pageTextKey,
+} from "@/data/page-fields";
 
 const LANGS = [
   { code: "en", label: "English" },
@@ -17,10 +22,7 @@ const PAGES = [
   {
     key: "home",
     label: "Home",
-    fields: [
-      { key: "introTitle", label: "Intro title", value: en.home.introTitle },
-      { key: "introText", label: "Intro text", value: en.home.introText, multiline: true },
-    ],
+    fields: PAGE_TEXT_FIELDS.home,
     images: [
       { key: "home.heroBackground", label: "Hero background photo (behind the “Valletti” title)" },
       { key: "home.philosophyTeaser", label: "Philosophy teaser image" },
@@ -29,21 +31,7 @@ const PAGES = [
   {
     key: "winery",
     label: "The Winery",
-    fields: [
-      { key: "openingLine", label: "Opening line (hero)", value: en.winery.openingLine, multiline: true },
-      { key: "philosophyQuote", label: "Philosophy pull-quote", value: en.winery.philosophyQuote, multiline: true },
-      { key: "vineyardTitle", label: "Vineyard section title", value: en.winery.vineyardTitle },
-      { key: "vineyardText1", label: "Vineyard — paragraph 1", value: en.winery.vineyardText1, multiline: true },
-      { key: "vineyardText2", label: "Vineyard — paragraph 2", value: en.winery.vineyardText2, multiline: true },
-      { key: "harvestTitle", label: "Harvest section title", value: en.winery.harvestTitle },
-      { key: "harvestText1", label: "Harvest — paragraph 1", value: en.winery.harvestText1, multiline: true },
-      { key: "harvestText2", label: "Harvest — paragraph 2", value: en.winery.harvestText2, multiline: true },
-      { key: "cellarTitle", label: "Cellar section title", value: en.winery.cellarTitle },
-      { key: "cellarText1", label: "Cellar — paragraph 1", value: en.winery.cellarText1, multiline: true },
-      { key: "cellarText2", label: "Cellar — paragraph 2", value: en.winery.cellarText2, multiline: true },
-      { key: "closingQuote", label: "Closing pull-quote", value: en.winery.closingQuote, multiline: true },
-      { key: "closingText", label: "Closing paragraph", value: en.winery.closingText, multiline: true },
-    ],
+    fields: PAGE_TEXT_FIELDS.winery,
     images: [
       { key: "winery.philosophy", label: "Philosophy portrait" },
       { key: "winery.vineyard", label: "Vineyard section image" },
@@ -54,12 +42,7 @@ const PAGES = [
   {
     key: "about",
     label: "About Valletti",
-    fields: [
-      { key: "historyTitle", label: "History title", value: en.about.historyTitle },
-      { key: "historyText", label: "History text", value: en.about.historyText, multiline: true },
-      { key: "todayTitle", label: "Today title", value: en.about.todayTitle },
-      { key: "todayText", label: "Today text", value: en.about.todayText, multiline: true },
-    ],
+    fields: PAGE_TEXT_FIELDS.about,
     images: [
       { key: "about.history", label: "History photo (1958)" },
       { key: "about.today", label: "Estate today photo" },
@@ -70,9 +53,8 @@ const PAGES = [
     key: "visit",
     label: "Visit",
     // No translated fields/pictures here — this page's editable content
-    // (Opening Hours) is handled separately below, since it saves for
-    // real via useAdminStore instead of being demo-only.
-    fields: [],
+    // (Opening Hours) is handled separately below.
+    fields: [] as PageTextField[],
     images: [],
   },
 ];
@@ -145,7 +127,6 @@ function PageImageSlot({
 export default function AdminPagesEditor() {
   const [activePage, setActivePage] = useState(PAGES[0].key);
   const [lang, setLang] = useState("en");
-  const [saved, setSaved] = useState(false);
   const { media, pageImages, pageText, addMedia, setPageImage, setPageText, mediaUrl } =
     useAdminStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -274,47 +255,40 @@ export default function AdminPagesEditor() {
                   </button>
                 ))}
               </div>
-              {lang !== "en" && (
-                <span className="text-xs text-ink/40">
-                  Showing English as reference — enter the {LANGS.find((l) => l.code === lang)?.label} translation below.
-                </span>
-              )}
+              <span className="text-xs text-ink/40">
+                Editing the {LANGS.find((l) => l.code === lang)?.label} version. Changes
+                save automatically and are live on the site.
+              </span>
             </div>
 
             <div className="grid gap-5">
-              {page.fields.map((f) => (
-                <label key={f.key} className="flex flex-col gap-1 text-sm">
-                  <span className="text-ink/70">{f.label}</span>
-                  {f.multiline ? (
-                    <textarea
-                      rows={4}
-                      defaultValue={lang === "en" ? f.value : ""}
-                      placeholder={lang !== "en" ? f.value : undefined}
-                      className="input"
-                    />
-                  ) : (
-                    <input
-                      defaultValue={lang === "en" ? f.value : ""}
-                      placeholder={lang !== "en" ? f.value : undefined}
-                      className="input"
-                    />
-                  )}
-                </label>
-              ))}
+              {page.fields.map((f) => {
+                const textKey = pageTextKey(lang, page.key, f.key);
+                const value = pageText[textKey] ?? defaultPageText(lang, page.key, f.key);
+                const english = defaultPageText("en", page.key, f.key);
+                return (
+                  <label key={textKey} className="flex flex-col gap-1 text-sm">
+                    <span className="text-ink/70">{f.label}</span>
+                    {f.multiline ? (
+                      <textarea
+                        rows={4}
+                        value={value}
+                        placeholder={english}
+                        onChange={(e) => setPageText(textKey, e.target.value)}
+                        className="input"
+                      />
+                    ) : (
+                      <input
+                        value={value}
+                        placeholder={english}
+                        onChange={(e) => setPageText(textKey, e.target.value)}
+                        className="input"
+                      />
+                    )}
+                  </label>
+                );
+              })}
             </div>
-
-            <button
-              onClick={() => {
-                setSaved(true);
-                setTimeout(() => setSaved(false), 2000);
-              }}
-              className="mt-6 bg-black text-white px-6 py-2.5 text-sm hover:opacity-90"
-            >
-              Save changes
-            </button>
-            {saved && (
-              <span className="ml-3 text-sm text-green-700">Saved (demo only).</span>
-            )}
           </div>
         </>
       )}
